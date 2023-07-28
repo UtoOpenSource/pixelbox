@@ -3,6 +3,7 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #define CHUNK_WIDTH 32
 
@@ -13,38 +14,60 @@ union packpos { // two int16_t!
 
 /* */
 struct chunk {
-	uint8_t  atomsA[32*32];
-	uint8_t  atomsB[32*32];
-	int8_t    usagefactor;
-	union packpos pos;
 	struct chunk* next;
-};
+	union packpos pos;
+	uint8_t  atoms[32*32*2];
+	int8_t   usagefactor;
+	int8_t    needUpdate; 
+}; // we use dirty assumptions about atomic operations here :(
 
 #define MAPLEN 64 // must be pow of 2!
-#define MAPINT(V) (V & (MAPLEN-1))
-#define MAPHASH(V) MAPINT(V ^ (V*234975434)) // hash & mapfunc
+
+// specialized hashmap => chunkmap
+struct chunkmap {
+	struct chunk* data[MAPLEN];
+};
+
+//typedef struct sqlite3 sqlite3;
+struct sqlite3;
 
 extern struct worldState {
 	uint64_t seed; // seed
 	uint64_t rngstate; // rng (== seed at the beginning)
 
 	bool wIndex; // index of writable array in chunks
-	struct chunk* GameMap[MAPLEN]; // processing and interactable chunks
-	
+	struct chunkmap Map; // chunk map
 
-	struct chunk* LoadMap[MAPLEN]; // chunks that's loading now
-	struct chunk* SaveMap[MAPLEN]; // chunks that's saving now
+	struct sqlite3* database; 
 } World;
 
+// mark implemented stuff with +
+// PUBLIC INTERFACE
+
+// global initialization/destruction
 int  initWorld(void);
 void freeWorld(void);
 
-int  loadWorld(const char* path);
+// function below may be called only
+// after initialization and before destruction!
 
-int32_t randomNumber(void);
-void    setSeed(int64_t);
+int  openWorld(const char* path);
+void flushWorld(void); // save all unsaved chunks. Call after collectAnything()
 
-void collectAnything(void);
-int collectGarbage(void);
+void collectAnything(void); // collect all chunks.
+int collectGarbage(void); // collect unused chunks
 
+int32_t randomNumber(void); // used by main thread ONLY!
+float  noise2(float x, float y);
+float noise1( float x );
+void    setWorldSeed(int64_t); // called ONLY during world creation!
+
+struct chunk* getWorldChunk(int16_t x, int16_t y); // may fail to load/gen
+uint64_t getMemoryUsage(); // not accurate
+
+#define MODE_READ  0
+#define MODE_WRITE 1
+uint8_t* getChunkData(struct chunk*, const bool mode); // +
+
+// PRIVATE INTERFACE MOVED TO IMPPIX.H
 
