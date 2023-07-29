@@ -31,19 +31,16 @@ void generateChunk(struct chunk* c) {
 	for (int x = 0; x < CHUNK_WIDTH; x++) {
 		for (int y = 0; y < CHUNK_WIDTH; y++) {
 
-			float ax = (x + c->pos.axis[0]*CHUNK_WIDTH);
-			float ay = (y + c->pos.axis[1]*CHUNK_WIDTH);
+			int ax = (x + (int)c->pos.axis[0]*CHUNK_WIDTH);
+			int ay = (y + (int)c->pos.axis[1]*CHUNK_WIDTH);
 			float v;
 
-			v = noise1(ax/1024.0) * noise1(((ax + 44)/32 * sin(ax/1000))/240)*64;
-			if (ay > v) {
-				v = noise2(ax/512.0, ay/512.0) * 1.5;
-				v -= noise2(noise1(ax/2048.0), noise1(ay/2048.0));
-			} else v = 0.40;
-			if ((v < 0.05 || v > 0.43)) {
-				v = noise2(ax/124.0f, ay/124.0f) + 0.5;
-			} else v = 0;
-			data[x + y * CHUNK_WIDTH] = v * 255;
+			v = noise2(ax/512.0, ay/512.0);
+			v -= noise2(ax/1024.0, ay/1024.0);
+			if ((v < 0.05 || v > 0.9)) {
+				v = noise2(ax/124.0, ay/124.0);
+			} else v = 0; 
+			data[x + y * CHUNK_WIDTH] = v*255;
 			//data2[x + y * CHUNK_WIDTH] = randomNumber();
 		}
 	}
@@ -56,7 +53,7 @@ void addSaveQueue(struct chunk* c) {
 }
 
 void addLoadQueue(struct chunk* c) {
-	if (loadChunk(c) != 0) {
+	if (loadChunk(c) <= 0) {
 		generateChunk(c);
 	}
 	c->usagefactor = CHUNK_USAGE_VALUE;
@@ -81,7 +78,7 @@ int  loadChunk(struct chunk* c) {
 			}
 		}
 		sqlite3_finalize(stmt);
-		return !loaded;
+		return loaded;
 	}
 	return -1;
 }
@@ -91,7 +88,7 @@ void saveChunk(struct chunk* c) {
 sqlite3_stmt* stmt = create_statement(
 				"INSERT OR REPLACE INTO WCHUNKS VALUES(?1, ?2);");
 		if (!stmt) return;
-		sqlite3_bind_int(stmt, 1, c->pos.pack);
+		sqlite3_bind_int64(stmt, 1, c->pos.pack);
 		sqlite3_bind_blob(stmt, 2, getChunkData(c, MODE_READ), 32*32, SQLITE_STATIC);
 		while (statement_iterator(stmt) > 0) {}
 		sqlite3_finalize(stmt);

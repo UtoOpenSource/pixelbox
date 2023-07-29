@@ -85,6 +85,45 @@ static int  renderChunk(struct chunk* c) {
 	}
 }
 
+#define ABS(x) (((x) >= 0) ? (x) : -(x))
+
+static void setpixel(int x, int y, uint8_t val) {
+	int cx = (unsigned int)x/CHUNK_WIDTH;
+	int cy = (unsigned int)y/CHUNK_WIDTH;
+	struct chunk* ch;
+	ch = getWorldChunk(cx, cy);
+	int ax = (unsigned int)x%CHUNK_WIDTH;
+	//if (cx < 0) ax += CHUNK_WIDTH-1;
+	int ay = (unsigned int)y%CHUNK_WIDTH;
+	//if (cy < 0) ay += CHUNK_WIDTH-1;
+	getChunkData(ch, MODE_READ)[ax + ay * CHUNK_WIDTH] = val;
+}
+
+
+void setline (int x0, int y0, int x1, int y1, uint8_t color) {
+	int dx = ABS(x1 - x0);
+	int dy = ABS(y1 - y0) * -1;
+	int stepx = x0 < x1 ? 1 : -1;
+	int stepy = y0 < y1 ? 1 : -1;
+	
+	int err = dx + dy, e2 = 0;
+	int limit = 0;
+	
+	while (limit < 255) {
+		limit++;
+		setpixel(x0, y0, color);
+		if (x0 == x1 && y0 == y1) break;
+		e2 = 2 * err;
+		if (e2 >= dy) {
+			err = err + dy;
+			x0  = x0 + stepx;
+		}
+		if (e2 <= dx) {
+			err = err + dx;
+			y0  = y0 + stepy;
+		}
+	}
+}
 
 int main() {
 	SetTraceLogLevel(LOG_WARNING);
@@ -128,11 +167,37 @@ int main() {
 		}
 		flushChunksCache();
 
+		Vector2 mousepos = GetScreenToWorld2D(GetMousePosition(), cam);
+
 		EndMode2D();
-		DrawText("OK", 0, 0, 30, BLACK);
+		Vector2 campos = GetScreenToWorld2D((Vector2){0, 0}, cam);
+		DrawText(TextFormat(
+				"PIXELBOX %i FPS, %i FRAMETIME\n[NORMAL]:[CHUNK]\n\
+CAM[%i, %i]\nCUR[%i, %i]:[%i, %i]\n",
+				(int)GetFPS(),
+				(int)(GetFrameTime()*1000),
+				(int)campos.x,
+				(int)campos.y,
+				(int)mousepos.x,
+				(int)mousepos.y,
+				(int)mousepos.x/CHUNK_WIDTH,
+				(int)mousepos.y/CHUNK_WIDTH
+			), 0, 0, 26, WHITE);
 		EndDrawing();
 
 		collectGarbage();
+
+		// input
+		if (IsMouseButtonDown(1)) {
+			Vector2 dpos = GetMouseDelta();
+			Vector2 cpos = GetMousePosition();
+			dpos.x = cpos.x - dpos.x;
+			dpos.y = cpos.y - dpos.y;
+			dpos = GetScreenToWorld2D(dpos, cam); 
+			cpos = GetScreenToWorld2D(cpos, cam); 
+			setline(cpos.x, cpos.y, dpos.x, dpos.y, randomNumber());
+		}
+
 	};
 
 	freeWorld();
