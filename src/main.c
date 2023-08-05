@@ -4,103 +4,26 @@
 #include "pixel.h"
 #include <stdio.h>
 
-#define BUILDERWIDTH 8
-struct {
-	Shader   shader;
-	Texture texture;
-	float positions[BUILDERWIDTH*BUILDERWIDTH*2];
-	uint16_t iteration;
-} Builder;
-
-static const char* fragment =
-"#version 330 \n\
-// Input vertex attributes (from vertex shader)\n\
-in vec2 fragTexCoord;\n\
-in vec4 fragColor;\n\
-uniform sampler2D texture0;  \n\
-out vec4 finalColor; \n\
-\n\
-vec4 effect(vec4 color, sampler2D tex, vec2 texture_coords) {\n\
-	int val = int(texture(tex, texture_coords).r*255.0);\n\
-	float kind = float(val & 3) / 6.0;\n\
-	int type = (val >> 2) & 63;\n\
-	float r  = float(type & 3) + kind;\n\
-	float g  = float((type >> 2) & 3) + kind;\n\
-	float b  = float((type >> 4) & 3) + kind;\n\
-	return vec4(r/4.0, g/4.0, b/4.0, 1);\n\
-	//return vec4(val/255.0, 1, 0, 1);\n\
-}\n\
-\n\
-void main() {\n\
-	finalColor = effect(fragColor, texture0, fragTexCoord);\n\
-}"
-;
-
-static void initBuilder() {
-	Image img  = {0};
-	img.data   = NULL;
-	img.mipmaps = 1;
-	img.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
-	img.width  = 32*BUILDERWIDTH;
-	img.height = 32*BUILDERWIDTH;
-	Builder.texture = LoadTextureFromImage(img);
-	if (!IsTextureReady(Builder.texture)) abort();
-	Builder.shader = LoadShaderFromMemory(0, fragment);
-	if (!IsShaderReady(Builder.shader)) abort();
-	Builder.iteration = 0;
-	SetTextureFilter(Builder.texture, TEXTURE_FILTER_POINT);
-}
-
-static void freeBuilder() {
-	UnloadTexture(Builder.texture);
-	UnloadShader(Builder.shader);
-}
-
-static void flushChunksCache() {
-	BeginShaderMode(Builder.shader);
-	for (int pos = 0; pos < Builder.iteration; pos++) {
-		int x = pos % BUILDERWIDTH;
-		int y = pos / BUILDERWIDTH;
-		DrawTextureRec(Builder.texture, (Rectangle){x*CHUNK_WIDTH, y*CHUNK_WIDTH, CHUNK_WIDTH, CHUNK_WIDTH}, 
-			(Vector2){Builder.positions[x*2 + y*BUILDERWIDTH*2],
-				Builder.positions[x*2 + y*BUILDERWIDTH*2 + 1]}, WHITE);
-	}
-	Builder.iteration = 0;
-	EndShaderMode();
-}
-
-static int  renderChunk(struct chunk* c) {
-	if (!c) return -1;
-	Builder.positions[Builder.iteration * 2] =
-		((int32_t)c->pos.axis[0]) * CHUNK_WIDTH;
-	Builder.positions[Builder.iteration * 2 + 1] =
-		((int32_t)c->pos.axis[1]) * CHUNK_WIDTH;
-	int x = Builder.iteration % BUILDERWIDTH;
-	int y = Builder.iteration / BUILDERWIDTH;
-	UpdateTextureRec(Builder.texture, (Rectangle){x * CHUNK_WIDTH,
-			y*CHUNK_WIDTH, CHUNK_WIDTH, CHUNK_WIDTH}, getChunkData(c, MODE_READ));
-	Builder.iteration++;
-	if (Builder.iteration >= BUILDERWIDTH*BUILDERWIDTH) {
-			flushChunksCache();
-	}
-}
-
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
 
-static void setpixel(int x, int y, uint8_t val) {
-	int cx = (unsigned int)x/CHUNK_WIDTH;
-	int cy = (unsigned int)y/CHUNK_WIDTH;
-	struct chunk* ch;
-	ch = getWorldChunk(cx, cy);
-	int ax = (unsigned int)x%CHUNK_WIDTH;
-	//if (cx < 0) ax += CHUNK_WIDTH-1;
-	int ay = (unsigned int)y%CHUNK_WIDTH;
-	//if (cy < 0) ay += CHUNK_WIDTH-1;
-	getChunkData(ch, MODE_READ)[ax + ay * CHUNK_WIDTH] = val;
+void initBuilder();
+void freeBuilder();
+void flushChunksCache();
+int  renderChunk(struct chunk* c);
+
+Camera2D cam = {0};
+int color_gradient = -1;
+int color_material = -1;
+
+static uint8_t getcolor() {
+	uint8_t color = 0;
+	color = color_material >= 0 ? color_material : randomNumber();
+	color <<= 2;
+	color |= color_gradient >= 0 ? color_gradient & 3 : randomNumber() & 3;
+	return color;
 }
 
-
-void setline (int x0, int y0, int x1, int y1, uint8_t color) {
+void setline (int x0, int y0, int x1, int y1) {
 	int dx = ABS(x1 - x0);
 	int dy = ABS(y1 - y0) * -1;
 	int stepx = x0 < x1 ? 1 : -1;
@@ -111,7 +34,8 @@ void setline (int x0, int y0, int x1, int y1, uint8_t color) {
 	
 	while (limit < 255) {
 		limit++;
-		setpixel(x0, y0, color);
+		setWorldPixel(x0, y0, getcolor(), MODE_READ);
+		markWorldUpdate(x0, y0);
 		if (x0 == x1 && y0 == y1) break;
 		e2 = 2 * err;
 		if (e2 >= dy) {
@@ -125,26 +49,89 @@ void setline (int x0, int y0, int x1, int y1, uint8_t color) {
 	}
 }
 
-int main() {
-	SetTraceLogLevel(LOG_WARNING);
-	SetConfigFlags(FLAG_VSYNC_HINT);
-	InitWindow(640, 480, "[PixelBox] : amazing description");
-	SetWindowState(FLAG_WINDOW_RESIZABLE);
-	initBuilder();
+void _initAtoms();
 
-	initWorld();
-	openWorld(true ? ":memory:" : "test.db");
-	Camera2D cam = {0};
-	cam.zoom = 3;
-	cam.rotation = 0;
-	cam.target = (Vector2){120/2, 120/2};
-	cam.offset = (Vector2){GetScreenWidth()/2, GetScreenHeight()/2};
+#include "raygui.h"
 
-	while (!WindowShouldClose()) { 
-		cam.offset = (Vector2){GetScreenWidth()/2, GetScreenHeight()/2};
-		BeginDrawing();
-		ClearBackground(RAYWHITE);
-		BeginMode2D(cam); // draw world
+Rectangle winrec = (Rectangle){
+	0, 100,
+	400, 110
+};
+
+static const char* tabs[] = {
+	"world",
+	"pallete",
+	"about",
+	NULL
+};
+
+static int active_tab = 1;
+static int window_hidden = 0;
+int GuiTabBarEx(Rectangle bounds, int width, int closeable, const char **text, int count, int *active);
+void GuiLoadStyleDark(void); // CALL ONLY ONCE!
+
+static int allowupdate = 0;
+
+void drawGUI() {
+	GuiPanel(winrec, TextFormat("[PIXELBOX v.%1.1f] (%i FPS)", 1.0, (int)GetFPS()));
+	Rectangle rec = (Rectangle){ // Hide button rectangle
+		winrec.x + winrec.width - 20, winrec.y + 2,
+		20, 20
+	};
+
+	if (GuiButton(rec, GuiIconText(window_hidden ?
+			ICON_ARROW_UP : ICON_ARROW_DOWN, "")
+		)) {
+		window_hidden = !window_hidden;
+	}
+
+	if (window_hidden) return; // :)
+	
+	// content rectangle
+	rec = (Rectangle){
+		winrec.x, winrec.y + 25,
+		winrec.width, winrec.height - 25
+	};
+
+	int old = rec.height;
+	rec.height = 20;
+	GuiTabBarEx(rec, 80, false, tabs, 3, &active_tab);
+	rec.y += 25;
+	rec.height = old - 25;
+	rec.x += 5;
+	rec.width -= 5;
+
+	Rectangle item = (Rectangle){
+		rec.x, rec.y,
+		rec.width/2, 25
+	};
+
+	switch(active_tab) {
+		case 0 : {// world
+			allowupdate = GuiToggle(item, "Enable Physic", allowupdate);
+		}; break;
+		case 1 : {// pallete 
+
+		}; break;
+		case 2 : {// about
+			GuiLine(rec, "about");
+		}; break;
+		default :
+
+		break;
+	}
+}
+
+int UpdateGUI() { // AND player interactions are here
+	winrec = (Rectangle){
+		0, GetScreenHeight() - (window_hidden ? 25 : 200),
+		400, (window_hidden ? 25 : 205)
+	};
+	GuiLock();
+	if (CheckCollisionPointRec(GetMousePosition(), winrec)) {
+		// gui
+		GuiUnlock();
+	} else { // interact
 		if (IsMouseButtonDown(0)) {
 			Vector2 md = GetMouseDelta();
 			cam.target.x -= md.x /cam.zoom;
@@ -154,7 +141,69 @@ int main() {
 		cam.zoom += GetMouseWheelMove() * 0.15 * cam.zoom;
 		if (cam.zoom < 0.01) cam.zoom = 0.01;
 		if (cam.zoom > 100) cam.zoom = 100;
-		
+
+		// input
+		if (IsMouseButtonDown(1)) {
+			Vector2 dpos = GetMouseDelta();
+			Vector2 cpos = GetMousePosition();
+			dpos.x = cpos.x - dpos.x;
+			dpos.y = cpos.y - dpos.y;
+			dpos = GetScreenToWorld2D(dpos, cam); 
+			cpos = GetScreenToWorld2D(cpos, cam); 
+			setline(cpos.x, cpos.y, dpos.x, dpos.y);
+		}
+
+		if (IsKeyDown(KEY_U)) {
+			updateWorld();
+		}
+
+	}
+	drawGUI();
+	if (allowupdate) updateWorld();
+}
+
+#include <stdlib.h>
+char* world_db_path = NULL;
+int IntroDialog();
+int CreationDialog();
+
+int main() {
+	_initAtoms();
+	SetTraceLogLevel(LOG_WARNING);
+	SetConfigFlags(FLAG_VSYNC_HINT);
+	InitWindow(640, 480, "[PixelBox] : amazing description");
+	SetWindowState(FLAG_WINDOW_RESIZABLE);
+	GuiLoadStyleDark();
+
+	if (IntroDialog()) { // interrupted
+		CloseWindow();
+		return 0;
+	}
+
+	initBuilder();
+	initWorld();
+
+	if (!world_db_path) { // no path? => new world!
+		if (CreationDialog()) {
+			freeWorld();
+			freeBuilder();
+			CloseWindow();
+			return 0;
+		}
+	} else openWorld(world_db_path);
+
+	cam.zoom = 3;
+	cam.rotation = 0;
+	cam.target = (Vector2){120/2, 120/2};
+	cam.offset = (Vector2){GetScreenWidth()/2, GetScreenHeight()/2};
+
+	while (!WindowShouldClose()) { 
+		cam.offset = (Vector2){GetScreenWidth()/2, GetScreenHeight()/2};
+		BeginDrawing();
+		ClearBackground(RAYWHITE);
+
+		BeginMode2D(cam); // draw world
+
 		int32_t x0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).x) / CHUNK_WIDTH - 1;
 		int32_t x1 = (GetScreenToWorld2D((Vector2){GetScreenWidth(), 0}, cam).x) / CHUNK_WIDTH + 1;
 		int32_t y0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).y) / CHUNK_WIDTH - 1;
@@ -170,6 +219,7 @@ int main() {
 		Vector2 mousepos = GetScreenToWorld2D(GetMousePosition(), cam);
 
 		EndMode2D();
+		UpdateGUI(); // draw gui!
 		Vector2 campos = GetScreenToWorld2D((Vector2){0, 0}, cam);
 		DrawText(TextFormat(
 				"PIXELBOX %i FPS, %i FRAMETIME\n[NORMAL]:[CHUNK]\n\
@@ -187,20 +237,10 @@ CAM[%i, %i]\nCUR[%i, %i]:[%i, %i]\n",
 
 		collectGarbage();
 
-		// input
-		if (IsMouseButtonDown(1)) {
-			Vector2 dpos = GetMouseDelta();
-			Vector2 cpos = GetMousePosition();
-			dpos.x = cpos.x - dpos.x;
-			dpos.y = cpos.y - dpos.y;
-			dpos = GetScreenToWorld2D(dpos, cam); 
-			cpos = GetScreenToWorld2D(cpos, cam); 
-			setline(cpos.x, cpos.y, dpos.x, dpos.y, randomNumber());
-		}
-
 	};
 
 	freeWorld();
+	free(world_db_path);
 	freeBuilder();
 	CloseWindow();
 	return 0;

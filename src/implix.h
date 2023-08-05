@@ -12,7 +12,6 @@
 struct chunk* allocChunk(int16_t x, int16_t y); // +
 void freeChunk(struct chunk*); // +
 
-
 void generateChunk(struct chunk*); 
 int  loadChunk(struct chunk*);
 void saveChunk(struct chunk*);
@@ -28,3 +27,5 @@ int statement_iterator(struct sqlite3_stmt* stmt);
 struct chunk* findChunk(struct chunkmap* m, int16_t x, int16_t y); // NULL if not found
 void insertChunk(struct chunkmap* m, struct chunk* c); 
 struct chunk* removeChunk(struct chunkmap* m, struct chunk* c); // returns next chunk if avail.
+
+void updateChunk(struct chunk* c);

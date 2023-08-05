@@ -1,11 +1,27 @@
-// see pixelbox.h for copyright notice and license.
+/* 
+ * Pixelbox
+ * Copyright (C) 2023 UtoECat
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>
+ */
 
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 
-#define CHUNK_WIDTH 32
+#define CHUNK_WIDTH 16
 
 union packpos { // two int16_t!
 	uint32_t pack;
@@ -18,7 +34,7 @@ struct chunk {
 	union packpos pos;
 	uint8_t  atoms[32*32*2];
 	int8_t   usagefactor;
-	int8_t    needUpdate; 
+	int8_t    needUpdate, wasUpdated; 
 }; // we use dirty assumptions about atomic operations here :(
 
 #define MAPLEN 64 // must be pow of 2!
@@ -37,11 +53,11 @@ extern struct worldState {
 
 	bool wIndex; // index of writable array in chunks
 	struct chunkmap Map; // chunk map
-
+	int mode; // worldgen mode
+	
 	struct sqlite3* database; 
 } World;
 
-// mark implemented stuff with +
 // PUBLIC INTERFACE
 
 // global initialization/destruction
@@ -59,8 +75,10 @@ int collectGarbage(void); // collect unused chunks
 
 int32_t randomNumber(void); // used by main thread ONLY!
 float  noise2(float x, float y);
-float noise1( float x );
+float  noise1( float x );
 void    setWorldSeed(int64_t); // called ONLY during world creation!
+
+void updateWorld(void);
 
 struct chunk* getWorldChunk(int16_t x, int16_t y); // may fail to load/gen
 uint64_t getMemoryUsage(); // not accurate
@@ -69,5 +87,7 @@ uint64_t getMemoryUsage(); // not accurate
 #define MODE_WRITE 1
 uint8_t* getChunkData(struct chunk*, const bool mode); // +
 
-// PRIVATE INTERFACE MOVED TO IMPPIX.H
-
+// at specified global pixel coords
+void setWorldPixel(int64_t x, int64_t y, uint8_t val, bool mode);
+uint8_t getWorldPixel(int64_t x, int64_t y, bool mode);
+struct chunk* markWorldUpdate(int64_t x, int64_t y); 

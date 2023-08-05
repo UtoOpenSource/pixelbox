@@ -59,17 +59,19 @@ void collectAnything (void) {
 }
 
 int collectGarbage (void) {
+	int limit = 0;
 	for (int i = 0; i < MAPLEN; i++) {
 		struct chunk *c = World.Map.data[i], *old = NULL;
 		while (c) {
-			c->usagefactor--;
-			if (c->usagefactor < 0) { // REMOVE AND COLLECT
+			if (c->usagefactor >= 0) c->usagefactor--;
+			if (c->usagefactor < 0 && limit < 5) { // REMOVE AND COLLECT
 				struct chunk* f = c;
 				if (old) old->next = c->next; // remove
 				else World.Map.data[i] = c->next; // remove
 				c = c->next;
 				// old stays the same
 				addSaveQueue(f); // will be freed IN!
+				limit++;
 			} else {
 				old = c;
 				c = c->next;

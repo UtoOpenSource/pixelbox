@@ -22,8 +22,8 @@ void freeWorld(void) {
 }
 
 static const char* init_sql = 
-"PRAGMA cache_size = -8000;"
-"PRAGMA journal_mode = WAL;"
+"PRAGMA cache_size = -16000;"
+"PRAGMA journal_mode = MEMORY;"
 "PRAGMA auto_vacuum = 2;"
 "PRAGMA secure_delete = 0;"
 "PRAGMA temp_store = MEMORY;"
@@ -32,8 +32,46 @@ static const char* init_sql =
 "CREATE TABLE IF NOT EXISTS WCHUNKS (id INTEGER PRIMARY KEY, value BLOB);"
 "PRAGMA optimize;";
 
+static bool getprop(const char* name, int64_t *out) {
+	if (World.database) {
+		bool loaded = false;
+		sqlite3_stmt* stmt = create_statement(
+				"SELECT value FROM PROPERTIES WHERE key = ?1;");
+		if (!stmt) {
+			perror(sqlite3_errmsg(World.database));
+			return false;
+		}
+		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+		while (statement_iterator(stmt) > 0) {
+			*out = sqlite3_column_int64(stmt, 0);
+			loaded = true;
+		}
+		sqlite3_finalize(stmt);
+		return loaded;
+	}
+	return false;
+}
+
+static bool setprop(const char* name, int64_t v) {
+	if (World.database) {
+		sqlite3_stmt* stmt = create_statement(
+				"INSERT OR REPLACE INTO PROPERTIES VALUES(?1, ?2);");
+		if (!stmt) {
+			perror(sqlite3_errmsg(World.database));
+			return false;
+		}
+		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt, 2, v);
+		while (statement_iterator(stmt) > 0) {}
+		sqlite3_finalize(stmt);
+		return true;
+	}
+	return false;
+}
+
 int  openWorld(const char* path) {
 	if (World.database) sqlite3_close_v2(World.database);
+	printf("opening %s...\n", path);
 	int stat = sqlite3_open_v2(path, &World.database, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL);
 	if (stat != SQLITE_OK) {
 		perror("Can't open database!");
@@ -44,6 +82,9 @@ int  openWorld(const char* path) {
 		perror("Can't init database!");
 		perror(msg);
 	};
+	int64_t v = 0;
+	if (getprop("seed", &v)) setWorldSeed(v);
+	if (getprop("mode", &v)) World.mode = v;
 	return 0;
 }
 
@@ -78,13 +119,47 @@ int statement_iterator(sqlite3_stmt* stmt) {
 	else {
 		stat = -1;
 		perror(sqlite3_errstr(res));
+		perror(sqlite3_errmsg(World.database));
 	}
 	if (stat < 1) sqlite3_reset(stmt);
 	return stat;
 }
 
 void flushWorld (void) {
-	//
+	setprop("seed", World.seed);
+	setprop("mode", World.mode);
+}
+
+void setWorldPixel(int64_t x, int64_t y, uint8_t val, bool mode) {
+	int64_t cx = (uint64_t)x/CHUNK_WIDTH;
+	int64_t cy = (uint64_t)y/CHUNK_WIDTH;
+	struct chunk* ch;
+	ch = getWorldChunk(cx, cy);
+	int ax = (uint64_t)x%CHUNK_WIDTH;
+	int ay = (uint64_t)y%CHUNK_WIDTH;
+	getChunkData(ch, mode)[ax + ay * CHUNK_WIDTH] = val;	
+}
+
+uint8_t getWorldPixel(int64_t x, int64_t y, bool mode) {
+	int64_t cx = (uint64_t)x/CHUNK_WIDTH;
+	int64_t cy = (uint64_t)y/CHUNK_WIDTH;
+	struct chunk* ch;
+	ch = getWorldChunk(cx, cy);
+	int ax = (uint64_t)x%CHUNK_WIDTH;
+	int ay = (uint64_t)y%CHUNK_WIDTH;
+	return getChunkData(ch, mode)[ax + ay * CHUNK_WIDTH];	
+}
+
+struct chunk* markWorldUpdate(int64_t x, int64_t y) {
+	int64_t cx = (uint64_t)x/CHUNK_WIDTH;
+	int64_t cy = (uint64_t)y/CHUNK_WIDTH;
+
+	struct chunk* ch;
+	ch = getWorldChunk(cx, cy);
+	//int ax = (unsigned int)x%CHUNK_WIDTH;
+	//int ay = (unsigned int)y%CHUNK_WIDTH;
+	ch->needUpdate = 1;	
+	return ch;
 }
 
 struct chunk* getWorldChunk(int16_t x, int16_t y) {
