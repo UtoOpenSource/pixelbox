@@ -1,5 +1,5 @@
 /* 
- * Pixelbox
+ * This file is a part of Pixelbox - Infinite 2D sandbox game
  * Copyright (C) 2023 UtoECat
  *
  * This program is free software: you can redistribute it and/or modify

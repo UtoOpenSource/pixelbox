@@ -1,5 +1,32 @@
-// see pixelbox.h for copyright notice and license.
+/* 
+ * Comtains a lot of thirdparty MIT Licensed/Public domain code
+ */
 #include "pixel.h"
+
+/*
+ * Original random generator was taken from Luau programming language
+ * Copyright (c) 2019-2022 Roblox Corporation
+ * Copyright (c) 1994–2019 Lua.org, PUC-Rio.
+ * And was highy modified by me, to fit in my purposes
+
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE. 
+ */
 
 static uint64_t nextState() {
 	int64_t old = World.rngstate;
@@ -25,8 +52,9 @@ void setWorldSeed(int64_t seed) {
 	randomizeNoise();
 }
 
-// END OF PIXELBOX RANDOM.H!
-
+/*
+ * END OF MIT-LICENSED CODE!!!!
+ */
 
 // noise1234
 //
@@ -93,7 +121,7 @@ static unsigned char perm[] = {151,160,137,91,90,15,
   138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
 };
 
-static void randomizeNoise() { // extension
+static void randomizeNoise() { // my extension
 	bool done[256] = {0};
 	uint64_t old = World.rngstate;
 

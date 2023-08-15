@@ -32,9 +32,9 @@ union packpos { // two int16_t!
 struct chunk {
 	struct chunk* next;
 	union packpos pos;
-	uint8_t  atoms[32*32*2];
+	uint8_t  atoms[16*16*2];
 	int8_t   usagefactor;
-	int8_t    needUpdate, wasUpdated; 
+	int8_t   needUpdate, wasUpdated; 
 }; // we use dirty assumptions about atomic operations here :(
 
 #define MAPLEN 64 // must be pow of 2!

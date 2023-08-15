@@ -1,12 +1,12 @@
-# kissbox
+# Pixelbox
 my last attempt to create pixelbox.
 This time it MUST be simple and pretty fast.
 
-Luajit FFI turns into mess when you trying to use small integers.
-Now we are in PURE C, no dynamic languages.
-Do you want modification/plugin? Edit source and compile it! Easy!
+*Luajit FFI turns into mess when you trying to use small integers.
+Now we are in PURE C, no dynamic languages.*
+~~Do you want modification/plugin? Edit source and compile it! Easy!~~
 
-# license
-Copyright (C) 2023 UtoECat.
-License : GNU GPL 3.0 or later.
-No any warrianty!
+# Pages
+See list of [Licenses](LICENSES.md) for code and resources.
+See screenshots (TODO)
+See todo list in Projects tab. (TODO)
