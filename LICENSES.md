@@ -66,7 +66,7 @@ http://creativecommons.org/licenses/by-sa/4.0/
  * SOFTWARE. 
 
 ```
-# RAYGUI [in this file](src/raygui.h)
+## RAYGUI [in this file](src/raygui.h)
 ```
 *   Copyright (c) 2014-2023 Ramon Santamaria (@raysan5)
 *

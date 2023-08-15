@@ -7,6 +7,6 @@ Now we are in PURE C, no dynamic languages.*
 ~~Do you want modification/plugin? Edit source and compile it! Easy!~~
 
 # Pages
-See list of [Licenses](LICENSES.md) for code and resources.
-See screenshots (TODO)
-See todo list in Projects tab. (TODO)
+- See list of [Licenses](LICENSES.md) for code and resources.
+- See screenshots (TODO)
+- See todo list in Projects tab. (TODO)
