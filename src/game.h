@@ -26,7 +26,6 @@ int  renderChunk(struct chunk* c);
 extern Camera2D cam;
 extern int color_gradient;
 extern int color_material;
-extern int allowupdate;
 
 struct screen {
 	struct screen* back;
@@ -47,3 +46,6 @@ void SetRootScreen(struct screen*); // => sets as current. Cleanups stack
 
 Rectangle GuiMenuWindow(const char* title);
 int GuiTextView(Rectangle rec, const char* src);
+
+void WorldRefCreate();
+void WorldRefDestroy();

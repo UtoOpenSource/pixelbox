@@ -33,6 +33,7 @@ struct chunk {
 	struct chunk* next;
 	union packpos pos;
 	uint8_t  atoms[16*16*2];
+	//uint8_t  posion_region[32*32*32];
 	int8_t   usagefactor;
 	int8_t   needUpdate, wasUpdated; 
 }; // we use dirty assumptions about atomic operations here :(
@@ -91,3 +92,7 @@ uint8_t* getChunkData(struct chunk*, const bool mode); // +
 void setWorldPixel(int64_t x, int64_t y, uint8_t val, bool mode);
 uint8_t getWorldPixel(int64_t x, int64_t y, bool mode);
 struct chunk* markWorldUpdate(int64_t x, int64_t y); 
+
+// data
+bool loadProperty(const char* k, int64_t *v);
+bool saveProperty(const char* k, int64_t v);

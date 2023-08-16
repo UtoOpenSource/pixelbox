@@ -10,6 +10,8 @@
 #define ITEM_MAGIC 0x0AFF
 #define NODE_MAGIC 0xFA0A
 
+#include <sanitizer/asan_interface.h>
+
 struct alloc_item {
 	uint16_t magic; // 0x0A0A0AFF
 	uint16_t busy;
@@ -29,12 +31,27 @@ static struct alloc_node* node_list = NULL, *node_last = NULL;
 
 #include <assert.h>
 
+#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+#define ASAN_POISON_MEMORY_REGION(addr, size) \
+  __asan_poison_memory_region((addr), (size))
+#define ASAN_UNPOISON_MEMORY_REGION(addr, size) \
+  __asan_unpoison_memory_region((addr), (size))
+#else
+#define ASAN_POISON_MEMORY_REGION(addr, size) \
+  ((void)(addr), (void)(size))
+#define ASAN_UNPOISON_MEMORY_REGION(addr, size) \
+  ((void)(addr), (void)(size))
+#endif 
+#define POSION_REG(P, S) ASAN_POISON_MEMORY_REGION(P, S)
+#define UNPOSION_REG(P, S) ASAN_UNPOISON_MEMORY_REGION(P, S)
+
 static void allocfree() {
 	c89mtx_destroy(&alloc_mutex);
 	struct alloc_node* f = NULL;
 	while (node_list) {
 		f = node_list;
 		node_list = node_list->next;
+		UNPOSION_REG(&(f->magic), sizeof(uint16_t));
 		assert(f->magic == NODE_MAGIC && "heap corruption");
 		if (f->count)
 			fprintf(stderr, "ALLOC: leak detected! %i chunks are not freed!\n", f->count);
@@ -59,6 +76,8 @@ static struct alloc_node* newnode() {
 	for (uint16_t i = 0; i < NODE_LEN; i++) {
 		n->items[i].magic = ITEM_MAGIC; // item magic number
 		n->items[i].busy = FREE_VALUE;
+		POSION_REG(&(n->items[i].magic), sizeof(uint16_t));
+		//POSION_REG(&(n->items[i].data.posion_region), sizeof(uint16_t));
 	}
 	if (node_last) node_last->next = n; // 'cause list may be empty
 	node_last = n;
@@ -72,6 +91,12 @@ static void allocinit() {
 	fprintf(stderr, "ALLOC: chunk allocator intialized\n");
 }
 
+static void checkmagic(struct alloc_node* n) {
+	UNPOSION_REG(&(n->magic), sizeof(uint16_t));
+	assert(n->magic == NODE_MAGIC); // pedantic
+	POSION_REG(&(n->magic), sizeof(uint16_t));
+}
+
 static struct alloc_node* findCoolNode() { // with space available
 	if (!node_list) allocinit(); // ok
 	struct alloc_node* n = node_list;
@@ -79,8 +104,14 @@ static struct alloc_node* findCoolNode() { // with space available
 		n = n->next;
 	}
 	if (!n) n = newnode(); // no empty nodes? Alloc new one!
-	assert(n->magic == NODE_MAGIC); // pedantic
+	checkmagic(n);	
 	return n;
+}
+
+void checkimagic(struct alloc_item* it) {
+	UNPOSION_REG(&(it->magic), sizeof(uint16_t));
+	assert(it->magic == ITEM_MAGIC); // pedantic
+	POSION_REG(&(it->magic), sizeof(uint16_t));
 }
 
 struct chunk* allocChunk(int16_t x, int16_t y) {
@@ -98,7 +129,8 @@ struct chunk* allocChunk(int16_t x, int16_t y) {
 	assert(i < NODE_LEN && "heap corruption! (invalid count)");
 	n->count++; // one more item is busy now
 	n->items[i].busy = i; // hehe
-	assert(n->items[i].magic == ITEM_MAGIC && "bad magic"); // pedantic again
+
+	checkimagic(&(n->items[i])); // pedantic again
 
 	c89mtx_unlock(&alloc_mutex);
 	struct chunk* c = &(n->items[i].data); // well done	
@@ -111,14 +143,14 @@ static struct alloc_item* dataToNode(void* p, struct alloc_node** dst) {
 	const char* offset = &(((struct alloc_item*)0)->data);
 	struct alloc_item* it = (struct alloc_item*)((char*)p - offset);
 
-	assert(it->magic == ITEM_MAGIC && "heap corruption or region is not chunk");
+	checkimagic(it);
 	uint16_t i = it->busy;
 	assert(i < NODE_LEN); // including FREE_VALUE
 	struct alloc_item* fi = it - i; // first item
 	
 	const char* offset2 = &(((struct alloc_node*)0)->items);
 	struct alloc_node* n = (struct alloc_node*)((char*)fi - offset2);
-	assert(n->magic == NODE_MAGIC); // pedantic
+	checkmagic(n);
 	assert(n->items + i == it); // must be same
 	assert((void*)(&it->data) == p); // may be removed?
 
@@ -140,13 +172,14 @@ void freeChunk(struct chunk* orig) {
 	n->count--;
 	if (n->empty > it->busy) n->empty = it->busy; // set new empty node index
 	it->busy = FREE_VALUE; // yeah
+	checkimagic(it);
 	memset(&it->data, 0, sizeof(struct chunk)); // important
 
 	c89mtx_unlock(&alloc_mutex); // done
 }
 
 uint8_t* getChunkData(struct chunk* c, const bool mode) {
-	return c->atoms + (mode == World.wIndex ? 32*32 : 0);
+	return c->atoms + (mode == World.wIndex ? CHUNK_WIDTH*CHUNK_WIDTH : 0);
 }
 
 #include <string.h>
@@ -215,7 +248,7 @@ int  loadChunk(struct chunk* c) {
 		while (statement_iterator(stmt) > 0) {
 			const uint8_t* data = (uint8_t*)sqlite3_column_blob(stmt, 0);
 			if (data) {
-				memcpy(getChunkData(c, false), data, 32*32);
+				memcpy(getChunkData(c, false), data, CHUNK_WIDTH*CHUNK_WIDTH);
 				loaded = true;
 			}
 		}
@@ -231,7 +264,7 @@ sqlite3_stmt* stmt = create_statement(
 				"INSERT OR REPLACE INTO WCHUNKS VALUES(?1, ?2);");
 		if (!stmt) return;
 		sqlite3_bind_int64(stmt, 1, c->pos.pack);
-		sqlite3_bind_blob(stmt, 2, getChunkData(c, MODE_READ), 32*32, SQLITE_STATIC);
+		sqlite3_bind_blob(stmt, 2, getChunkData(c, MODE_READ), CHUNK_WIDTH*CHUNK_WIDTH, SQLITE_STATIC);
 		while (statement_iterator(stmt) > 0) {}
 		sqlite3_finalize(stmt);
 	}

@@ -43,6 +43,7 @@ int SetPrevScreen(struct screen* FALLBACK) {
 	if (NEW == SCREEN || CHANGE) return -1;
 	if (NEW && NEW->create) NEW->create();
 	CHANGE = NEW;
+	return 0;
 }
 
 #include "raygui.h"
@@ -63,9 +64,11 @@ Rectangle GuiMenuWindow(const char* title) {
 			SetPrevScreen(NULL);
 		}
 	}
-
 	return rec;
 }
+
+void _initAtoms();
+void GuiLoadStyleDark();
 
 int main() {
 	_initAtoms();
@@ -75,7 +78,6 @@ int main() {
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	GuiLoadStyleDark();
 
-	initBuilder();
 	SetRootScreen(&ScrMainMenu);
 	//initWorld();
 
@@ -102,7 +104,6 @@ int main() {
 	// free screen
 	if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 
-	freeBuilder();
 	CloseWindow();
 	return 0;
 }

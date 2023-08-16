@@ -18,6 +18,7 @@
 
 #include <raylib.h>
 #include "pixel.h"
+#include <stdlib.h>
 #include <stdio.h>
 
 #define BUILDERWIDTH 16

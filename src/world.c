@@ -69,6 +69,10 @@ static bool getprop(const char* name, int64_t *out) {
 	return false;
 }
 
+bool loadProperty(const char* k, int64_t *v) {
+	return getprop(k, v);
+}
+
 static bool setprop(const char* name, int64_t v) {
 	if (World.database) {
 		sqlite3_stmt* stmt = create_statement(
@@ -83,7 +87,12 @@ static bool setprop(const char* name, int64_t v) {
 		sqlite3_finalize(stmt);
 		return true;
 	}
+	fprintf(stderr, "property saving failture!");
 	return false;
+}
+
+bool saveProperty(const char* k, int64_t v) {
+	return setprop(k, v);
 }
 
 int  openWorld(const char* path) {

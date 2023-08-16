@@ -29,6 +29,7 @@ static FilePathList files;
 static int list_len, scroll, active;
 
 static void create() {
+	WorldRefCreate();
 	files = LoadDirectoryFilesEx("./saves", ".db", false);
 	if (!files.count || !files.paths) {
 		list = NULL; list_len = 0;
@@ -43,6 +44,7 @@ static void create() {
 static void destroy() {
 	free(list);
 	UnloadDirectoryFiles(files);
+	WorldRefDestroy();
 }
 
 // world selection dialog
@@ -77,6 +79,8 @@ static void draw() {
 
 	rec.x += rec.width + 4;
 	if (GuiButton(rec, "Open")) {
+			openWorld(list[activez]);
+			SetRootScreen(&ScrGamePlay);
 			/*uint64_t len = strlen(list[active]);
 			if (world_db_path) free(world_db_path);
 			world_db_path = malloc(len+1);

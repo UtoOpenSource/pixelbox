@@ -50,7 +50,7 @@ static void draw() {
 	
 	rec.y += rec.height + 5;
 	if (GuiButton(rec, "Create New World")) {
-		//SetNextScreen(&ScrNewWorld);
+		SetNextScreen(&ScrNewWorld);
 	}
 
 	rec.y += (rec.height + 5)*2;

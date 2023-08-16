@@ -24,7 +24,7 @@
 #include <assert.h>
 
 static const char* license = 
-"This file is a part of Pixelbox - Infinite 2D sandbox game\n"
+"Pixelbox - Infinite 2D sandbox game\n"
 "Copyright (C) 2023 UtoECat\n"
 "\n"
 "This program is free software: you can redistribute it and/or modify\n"
