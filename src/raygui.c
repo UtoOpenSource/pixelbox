@@ -59,6 +59,10 @@ int GuiTabBarEx(Rectangle bounds, int width, int closeable, const char **text, i
     return closing;     // Return closing tab requested
 }
 
+// Custom Text View
+
+#include "textView.h"
+
 // END
 
 //////////////////////////////////////////////////////////////////////////////////

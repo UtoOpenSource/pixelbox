@@ -15,3 +15,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>
  */
+
+#include "raygui.h"
+#include "pixel.h"
+#include "game.h"
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+static void create() {
+
+}
+
+static void destroy() {
+
+}
+
+static void draw() {
+
+}
+
+static void update() {
+
+}
+
+struct screen ScrNull = {
+	NULL, draw, update, create, destroy
+};
+
