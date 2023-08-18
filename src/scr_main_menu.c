@@ -34,33 +34,60 @@ static void destroy() {
 
 }
 
+#include "assets.h"
+static const char* title_text = 
+"there is one\nsusposter\namulgus"
+;
+
+const char* splash = "indev!";
+
 // world selection dialog
 static void draw() {
 	GuiEnable();
 
 	Rectangle rec = GuiMenuWindow("Pixelbox");
-	int orig_h = rec.height;
-	rec.height = 25;
-	GuiLine(rec, "PIXELBOX");
 
-	rec.y += rec.height + 5;
-	if (GuiButton(rec, "Open World")) {
+	Rectangle item = {rec.x, rec.y, 100, 100};
+	item.x += rec.width/2 - 50 - 50;
+	GuiAssetTexture(item, LookupAssetID("icon.png"));
+	item.x += 105;
+	item.width = 90;
+	GuiLabel(item, TextFormat("Pixelbox v.%1.1f\n%s",
+		(float) PBOX_VERSION, title_text));
+	
+	rec.y += 100 + 5;
+	rec.height -= 100 + 5;
+	item = (Rectangle){rec.x, rec.y, rec.width, 25};
+
+	if (GuiButton(item, "Open World")) {
 		SetNextScreen(&ScrWorldList);
 	}
 	
-	rec.y += rec.height + 5;
-	if (GuiButton(rec, "Create New World")) {
+	item.y += item.height + 5;
+	if (GuiButton(item, "Create New World")) {
 		SetNextScreen(&ScrNewWorld);
 	}
 
-	rec.y += (rec.height + 5)*2;
-	GuiLine(rec, "blablabla");
+	item.y += item.height + 5;
+	Rectangle old = item;
+	item.width = item.width / 2 - 5;
+	
+	GuiButton(item, "Settings");
+	item.x += item.width + 5;
+	GuiButton(item, "Exit program");
 
-	rec.y += rec.height + 5;
-	GuiLine(rec, "Copyright (C) UtoECat 2023");
+	item = old;
 
-	rec.y += rec.height + 5;
-	if (GuiButton(rec, "License")) {
+	item.y += item.height + 5;
+	GuiLabel(item, "blablabla");
+
+	item.y = rec.y + rec.height - (5 + 25);
+	GuiLabel(item, "Copyright (C) UtoECat 2023");
+
+	item.x += item.width / 3 * 2;
+	item.width /= 3;
+	item.width += 0.5;
+	if (GuiButton(item, "License")) {
 		SetNextScreen(&ScrLicense);
 	}
 }

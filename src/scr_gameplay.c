@@ -155,7 +155,7 @@ static int allowupdate = 0;
 static int window_hidden = 0;
 
 static void drawGUI() {
-	GuiPanel(winrec, TextFormat("[PIXELBOX v.%1.1f] (%i FPS)", 1.0, (int)GetFPS()));
+	GuiPanel(winrec, TextFormat("[PIXELBOX] (%i FPS)", (int)GetFPS()));
 	Rectangle rec = (Rectangle) { // Hide button rectangle
 		winrec.x + winrec.width - 20, winrec.y + 2,
 		20, 20

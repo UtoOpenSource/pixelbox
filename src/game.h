@@ -49,3 +49,5 @@ int GuiTextView(Rectangle rec, const char* src);
 
 void WorldRefCreate();
 void WorldRefDestroy();
+
+#define PBOX_VERSION 0.6

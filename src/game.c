@@ -67,6 +67,15 @@ Rectangle GuiMenuWindow(const char* title) {
 	return rec;
 }
 
+#include "assets.h"
+
+void GuiAssetTexture(Rectangle rec, AssetID id) {
+	Texture tex = GetTextureAsset(id);
+
+	DrawTexturePro(tex, (Rectangle){0, 0, tex.width, tex.height}, 
+		rec, (Vector2){0, 0}, 0, WHITE);
+}
+
 void _initAtoms();
 void GuiLoadStyleDark();
 
@@ -77,6 +86,7 @@ int main() {
 	InitWindow(640, 480, "[PixelBox] : amazing description");
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	GuiLoadStyleDark();
+	initAssetSystem();
 
 	SetRootScreen(&ScrMainMenu);
 	//initWorld();
@@ -91,6 +101,7 @@ int main() {
 		EndDrawing();
 
 		if (SCREEN && SCREEN->draw) SCREEN->update();
+		collectAssets();
 
 		// screen system
 		if (CHANGE) {
@@ -104,6 +115,7 @@ int main() {
 	// free screen
 	if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 
+	freeAssetSystem();
 	CloseWindow();
 	return 0;
 }
