@@ -19,7 +19,7 @@
 #include "implix.h"
 struct worldState World;
 
-#include <sqlite3.h>
+#include "sqlite3.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -129,9 +129,9 @@ sqlite3_stmt* create_statement(const char* sql) {
 // returns 0 if statement cmpleted successfully
 // returns -1 if error occured
 int statement_iterator(sqlite3_stmt* stmt) {
-	int attemts = 0;
+	int attemts = 0, res = 0;
 	retry :
-	int res = sqlite3_step(stmt);
+	res = sqlite3_step(stmt);
 	if (res == SQLITE_BUSY) {
 		attemts++;
 		if (attemts < 100) goto retry;

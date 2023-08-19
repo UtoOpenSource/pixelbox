@@ -31,8 +31,13 @@ struct {
 } Builder;
 
 static const char* fragment =
-"#version 330 \n\
-// Input vertex attributes (from vertex shader)\n\
+#ifdef PLATFORM_WEB
+"#version 300 es\n\
+precision mediump float;"
+#else
+"#version 330\n"
+#endif
+"// Input vertex attributes (from vertex shader)\n\
 in vec2 fragTexCoord;\n\
 in vec4 fragColor;\n\
 uniform sampler2D texture0;  \n\
@@ -54,17 +59,44 @@ void main() {\n\
 }"
 ;
 
+static const char* vertex = 
+#ifdef PLATFORM_WEB
+"#version 300 es\n\
+precision mediump float;\n\
+in vec3 vertexPosition;\n\
+in vec2 vertexTexCoord;\n\
+in vec3 vertexNormal;\n\
+in vec4 vertexColor;\n\
+uniform mat4 mvp;\n\
+out vec2 fragTexCoord;\n\
+out vec4 fragColor;\n\
+void main()\n\
+{\n\
+    fragTexCoord = vertexTexCoord;\n\
+    fragColor = vertexColor;\n\
+    gl_Position = mvp*vec4(vertexPosition, 1.0);\n\
+}"
+#else
+NULL
+#endif
+;
+
+static char unused[CHUNK_WIDTH*BUILDERWIDTH*CHUNK_WIDTH*BUILDERWIDTH];
+
 void initBuilder() {
 	Image img  = {0};
-	img.data   = NULL;
+	img.data   = unused;
 	img.mipmaps = 1;
 	img.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
 	img.width  = CHUNK_WIDTH*BUILDERWIDTH;
 	img.height = CHUNK_WIDTH*BUILDERWIDTH;
 	Builder.textures[0] = LoadTextureFromImage(img);
 	Builder.textures[1] = LoadTextureFromImage(img);
-	if (!IsTextureReady(Builder.textures[0])) abort();
-	Builder.shader = LoadShaderFromMemory(0, fragment);
+	if (!IsTextureReady(Builder.textures[0])) {
+		perror("Can't make texture for TextureBuilder! Aborting...");
+		abort();
+	}
+	Builder.shader = LoadShaderFromMemory(vertex, fragment);
 	if (!IsShaderReady(Builder.shader)) abort();
 	Builder.iteration = 0;
 	Builder.texidx = true;
@@ -106,5 +138,6 @@ int  renderChunk(struct chunk* c) {
 	if (Builder.iteration >= BUILDERWIDTH*BUILDERWIDTH) {
 			flushChunksCache();
 	}
+	return 0;
 }
 

@@ -79,19 +79,11 @@ void GuiAssetTexture(Rectangle rec, AssetID id) {
 void _initAtoms();
 void GuiLoadStyleDark();
 
-int main() {
-	_initAtoms();
-	SetTraceLogLevel(LOG_WARNING);
-	SetConfigFlags(FLAG_VSYNC_HINT);
-	InitWindow(640, 480, "[PixelBox] : amazing description");
-	SetWindowState(FLAG_WINDOW_RESIZABLE);
-	GuiLoadStyleDark();
-	initAssetSystem();
+#if defined(PLATFORM_WEB)
+    #include <emscripten/emscripten.h>
+#endif
 
-	SetRootScreen(&ScrMainMenu);
-	//initWorld();
-
-	while (!WindowShouldClose()) { 
+static void frame() {
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
 
@@ -109,8 +101,27 @@ int main() {
 			SCREEN = CHANGE;
 			CHANGE = NULL;
 		}
+}
 
+int main() {
+	_initAtoms();
+	SetTraceLogLevel(LOG_DEBUG);
+	SetConfigFlags(FLAG_VSYNC_HINT);
+	InitWindow(640, 480, "[PixelBox] : amazing description");
+	SetWindowState(FLAG_WINDOW_RESIZABLE);
+	GuiLoadStyleDark();
+	initAssetSystem();
+
+	SetRootScreen(&ScrMainMenu);
+	//initWorld();
+
+	#if defined(PLATFORM_WEB)
+    emscripten_set_main_loop(frame, 0, 1);
+	#else
+	while (!WindowShouldClose()) { 
+		frame();
 	};
+	#endif
 
 	// free screen
 	if (SCREEN && SCREEN->destroy) SCREEN->destroy();

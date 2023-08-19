@@ -164,10 +164,13 @@ static struct AssetNode* new_node(const char* path) {
 		} break;
 	};
 
-	if (node) {
-		node->id = hash_string(path);
-		node->usage = USAGE_TIMEOUT;
+	if (!node) {
+		node = calloc(sizeof(struct AssetNode), 1);
+		if (!node) return NULL;
+		node->type = ASSET_NULL;
 	}
+	node->id = hash_string(path);
+	node->usage = USAGE_TIMEOUT;
 	return node;
 }
 

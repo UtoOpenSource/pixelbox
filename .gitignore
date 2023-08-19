@@ -1,3 +1,7 @@
 *.o
 /kisspixel
 /saves/*
+*.js
+*.wasm
+*.a
+*.html

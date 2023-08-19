@@ -50,4 +50,7 @@ int GuiTextView(Rectangle rec, const char* src);
 void WorldRefCreate();
 void WorldRefDestroy();
 
+int GuiTabBarEx(Rectangle bounds, int width, int closeable, const char **text, int count, int *active);
+int GuiTextView(Rectangle rec, const char* src);
+
 #define PBOX_VERSION 0.6
