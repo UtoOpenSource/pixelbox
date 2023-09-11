@@ -90,10 +90,10 @@ static void frame() {
 		if (SCREEN && SCREEN->draw) SCREEN->draw();
 
 		DrawText("Pixelbox", 0, 0, 10, WHITE);
-		EndDrawing();
 
 		if (SCREEN && SCREEN->draw) SCREEN->update();
 		collectAssets();
+		EndDrawing();
 
 		// screen system
 		if (CHANGE) {
@@ -116,7 +116,7 @@ int main() {
 	//initWorld();
 
 	#if defined(PLATFORM_WEB)
-    emscripten_set_main_loop(frame, 0, 1);
+	emscripten_set_main_loop(frame, 0, 1);
 	#else
 	while (!WindowShouldClose()) { 
 		frame();

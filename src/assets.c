@@ -41,21 +41,20 @@ struct AssetNode {
 static struct AssetNode* ASSET_MAP[HASH_LEN];
 static Texture errorTexture;
 
+#include "img_error.h"
+
 void initAssetSystem() {
 	for (int i = 0; i < HASH_LEN; i++)
 		ASSET_MAP[i] = NULL; 
 
-	Image err = LoadImage("error.png");
-	if (!err.data) {
-		err = (Image){.data = NULL, 
-			.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8, 
-			.mipmaps = 1,
-			.width = 1,
-			.height = 1
-		};
-	}
+	Image err = (Image) {
+		.data = img_error_data, 
+		.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 
+		.mipmaps = 1,
+		.width = img_error_width,
+		.height = img_error_height
+	};
 	errorTexture = LoadTextureFromImage(err);
-	if (err.data) UnloadImage(err);
 }
 
 static void free_node(struct AssetNode* n) {

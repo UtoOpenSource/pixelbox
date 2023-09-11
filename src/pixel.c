@@ -113,13 +113,11 @@ void updateWorld(void) {
 				}
 
 				if (c->needUpdate) {
-					//printf("chunk %p updated!\n", c);
 					updateChunk(c);
 					c->wasUpdated = 1;
+					c->wIndex = !c->wIndex;
 					cnt++;
-				} else {
-					memcpy(getChunkData(c, MODE_WRITE), getChunkData(c, MODE_READ), CHUNK_WIDTH*CHUNK_WIDTH); // FIXME HOLY FUCK THIS IS HUGE :D
-				}
+				};
 				c = c->next;	
 			}
 		} 
@@ -135,7 +133,5 @@ void updateWorld(void) {
 			c = c->next;
 		}
 	}
-
-	World.wIndex = !World.wIndex;
 }
 

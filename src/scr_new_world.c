@@ -72,7 +72,7 @@ static void draw() {
 	if (GuiTextBox(rec, seed, 63, input2)) input2 = !input2;
 
 	rec.y += 30;
-	mode = GuiToggle(rec, mode ? "Flat" : "Normal", mode);
+	mode = GuiComboBox(rec, "Normal;Flat;Sponge", mode);
 
 	rec.y += 80;
 	rec.x -= rec.width - 2;

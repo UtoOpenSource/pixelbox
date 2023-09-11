@@ -32,10 +32,11 @@ union packpos { // two int16_t!
 struct chunk {
 	struct chunk* next;
 	union packpos pos;
-	uint8_t  atoms[16*16*2];
-	//uint8_t  posion_region[32*32*32];
-	int8_t   usagefactor;
-	int8_t   needUpdate, wasUpdated; 
+	uint8_t	atoms[CHUNK_WIDTH*CHUNK_WIDTH*2];
+	uint8_t  poison_region[16];
+	int8_t	usagefactor;
+	int8_t	needUpdate, wasUpdated;
+	bool		wIndex; 
 }; // we use dirty assumptions about atomic operations here :(
 
 #define MAPLEN 64 // must be pow of 2!
@@ -52,7 +53,6 @@ extern struct worldState {
 	uint64_t seed; // seed
 	uint64_t rngstate; // rng (== seed at the beginning)
 
-	bool wIndex; // index of writable array in chunks
 	struct chunkmap Map; // chunk map
 	int mode; // worldgen mode
 	

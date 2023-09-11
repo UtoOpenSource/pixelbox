@@ -76,6 +76,10 @@ static struct alloc_node* newnode() {
 	for (uint16_t i = 0; i < NODE_LEN; i++) {
 		n->items[i].magic = ITEM_MAGIC; // item magic number
 		n->items[i].busy = FREE_VALUE;
+		for (int j = 0; j < 16; j++) {
+			n->items[i].data.poison_region[j] = 0xAA;
+		}
+		POSION_REG(n->items[i].data.poison_region, 16);
 		POSION_REG(&(n->items[i].magic), sizeof(uint16_t));
 		//POSION_REG(&(n->items[i].data.posion_region), sizeof(uint16_t));
 	}
@@ -110,7 +114,12 @@ static struct alloc_node* findCoolNode() { // with space available
 
 void checkimagic(struct alloc_item* it) {
 	UNPOSION_REG(&(it->magic), sizeof(uint16_t));
+	UNPOSION_REG(it->data.poison_region, 16);
 	assert(it->magic == ITEM_MAGIC); // pedantic
+	for (int j = 0; j < 16; j++) {
+			assert(it->data.poison_region[j] == 0xAA && "corrupt chunk");
+	}
+	POSION_REG(it->data.poison_region, 16);
 	POSION_REG(&(it->magic), sizeof(uint16_t));
 }
 
@@ -173,13 +182,19 @@ void freeChunk(struct chunk* orig) {
 	if (n->empty > it->busy) n->empty = it->busy; // set new empty node index
 	it->busy = FREE_VALUE; // yeah
 	checkimagic(it);
+
+	UNPOSION_REG(it->data.poison_region, 16);
 	memset(&it->data, 0, sizeof(struct chunk)); // important
+	for (int j = 0; j < 16; j++) {
+		it->data.poison_region[j] = 0xAA;
+	}
+	POSION_REG(it->data.poison_region, 16);
 
 	c89mtx_unlock(&alloc_mutex); // done
 }
 
 uint8_t* getChunkData(struct chunk* c, const bool mode) {
-	return c->atoms + (mode == World.wIndex ? CHUNK_WIDTH*CHUNK_WIDTH : 0);
+	return c->atoms + (mode == c->wIndex ? CHUNK_WIDTH*CHUNK_WIDTH : 0);
 }
 
 #include <string.h>
@@ -208,6 +223,26 @@ void generateChunk(struct chunk* c) {
 	}
 }
 
+void generateChunkSponge(struct chunk* c) {
+	uint8_t* data = getChunkData(c, MODE_READ);
+	for (int x = 0; x < CHUNK_WIDTH; x++) {
+		for (int y = 0; y < CHUNK_WIDTH; y++) {	
+			int ax = (x + (int)c->pos.axis[0]*CHUNK_WIDTH);
+			int ay = (y + (int)c->pos.axis[1]*CHUNK_WIDTH);
+			long int pow = 1;
+			int v = 0;
+
+			for (int deep = 0; deep < 10; deep++) {
+				if ((ax/pow)%3 == 1 && (ay/pow)%3==1) goto skip_set;
+				pow = pow * 3;
+			}
+			v = noise2(ax/512.0, ay/512.0) * 128 + 128;
+			skip_set:
+			data[x + y * CHUNK_WIDTH] = v;
+		}
+	}
+}
+
 void generateChunkFlat(struct chunk* c) {
 	uint8_t* data = getChunkData(c, MODE_READ);
 	for (int x = 0; x < CHUNK_WIDTH; x++) {
@@ -229,7 +264,12 @@ void addSaveQueue(struct chunk* c) {
 
 void addLoadQueue(struct chunk* c) {
 	if (loadChunk(c) <= 0) {
-		World.mode ? generateChunkFlat(c) : generateChunk(c) ;
+		switch (World.mode) {
+			case 0 : generateChunk(c); break;
+			case 1 : generateChunkFlat(c); break;
+			case 2 : generateChunkSponge(c); break;
+			default: break;
+		}
 	}
 	c->usagefactor = CHUNK_USAGE_VALUE;
 	insertChunk(&World.Map, c); // OK

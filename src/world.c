@@ -27,7 +27,6 @@ struct worldState World;
 int initWorld(void) {
 	World.database = NULL;
 	setWorldSeed(time(NULL));
-	World.wIndex = false;
 	memset(&World.Map, 0, sizeof(World.Map));
 	return 0;
 }
