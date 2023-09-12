@@ -33,7 +33,6 @@ struct chunk {
 	struct chunk* next;
 	union packpos pos;
 	uint8_t	atoms[CHUNK_WIDTH*CHUNK_WIDTH*2];
-	uint8_t  poison_region[16];
 	int8_t	usagefactor;
 	int8_t	needUpdate, wasUpdated;
 	bool		wIndex; 

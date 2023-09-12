@@ -22,16 +22,15 @@
 #include <stdio.h>
 #include "c89threads.h"
 
-#define NODE_LEN 1024
-#define FREE_VALUE 32767
+#define NODE_LEN   128
+#define FREE_INDEX 65000
 #define ITEM_MAGIC 0x0AFF
 #define NODE_MAGIC 0xFA0A
-
-#include <sanitizer/asan_interface.h>
+#define ALLOCATOR_DEBUG 1
 
 struct alloc_item {
 	uint16_t magic; // 0x0A0A0AFF
-	uint16_t busy;
+	uint16_t index;
 	struct chunk data;
 };
 
@@ -48,33 +47,23 @@ static struct alloc_node* node_list = NULL, *node_last = NULL;
 
 #include <assert.h>
 
-#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
-#define ASAN_POISON_MEMORY_REGION(addr, size) \
-  __asan_poison_memory_region((addr), (size))
-#define ASAN_UNPOISON_MEMORY_REGION(addr, size) \
-  __asan_unpoison_memory_region((addr), (size))
-#else
-#define ASAN_POISON_MEMORY_REGION(addr, size) \
-  ((void)(addr), (void)(size))
-#define ASAN_UNPOISON_MEMORY_REGION(addr, size) \
-  ((void)(addr), (void)(size))
-#endif 
-#define POSION_REG(P, S) ASAN_POISON_MEMORY_REGION(P, S)
-#define UNPOSION_REG(P, S) ASAN_UNPOISON_MEMORY_REGION(P, S)
-
 static void allocfree() {
 	c89mtx_destroy(&alloc_mutex);
 	struct alloc_node* f = NULL;
+
 	while (node_list) {
 		f = node_list;
 		node_list = node_list->next;
-		UNPOSION_REG(&(f->magic), sizeof(uint16_t));
+
+#if ALLOCATOR_DEBUG
 		assert(f->magic == NODE_MAGIC && "heap corruption");
 		if (f->count)
 			fprintf(stderr, "ALLOC: leak detected! %i chunks are not freed!\n", f->count);
 		else for (uint16_t i = 0; i < NODE_LEN; i++) {
-			assert(f->items[i].busy == FREE_VALUE); // important too
+			assert(f->items[i].index == FREE_INDEX); // important too
 		}
+#endif
+
 		free(f);
 	}
 	node_list = NULL;
@@ -90,16 +79,14 @@ static struct alloc_node* newnode() {
 	}
 	n->magic = NODE_MAGIC; // node magic number
 	n->count = 0;
+
+#if ALLOCATOR_DEBUG
 	for (uint16_t i = 0; i < NODE_LEN; i++) {
 		n->items[i].magic = ITEM_MAGIC; // item magic number
-		n->items[i].busy = FREE_VALUE;
-		for (int j = 0; j < 16; j++) {
-			n->items[i].data.poison_region[j] = 0xAA;
-		}
-		POSION_REG(n->items[i].data.poison_region, 16);
-		POSION_REG(&(n->items[i].magic), sizeof(uint16_t));
-		//POSION_REG(&(n->items[i].data.posion_region), sizeof(uint16_t));
+		n->items[i].index = FREE_INDEX;
 	}
+#endif
+
 	if (node_last) node_last->next = n; // 'cause list may be empty
 	node_last = n;
 	return n;
@@ -112,32 +99,28 @@ static void allocinit() {
 	fprintf(stderr, "ALLOC: chunk allocator intialized\n");
 }
 
-static void checkmagic(struct alloc_node* n) {
-	UNPOSION_REG(&(n->magic), sizeof(uint16_t));
-	assert(n->magic == NODE_MAGIC); // pedantic
-	POSION_REG(&(n->magic), sizeof(uint16_t));
-}
-
 static struct alloc_node* findCoolNode() { // with space available
 	if (!node_list) allocinit(); // ok
+
 	struct alloc_node* n = node_list;
 	while (n && n->count == NODE_LEN-1) { // skip busy nodes
 		n = n->next;
 	}
 	if (!n) n = newnode(); // no empty nodes? Alloc new one!
-	checkmagic(n);	
+
+#if ALLOCATOR_DEBUG
+	assert(n->magic == NODE_MAGIC); // pedantic
+#endif
+
 	return n;
 }
 
-static void checkimagic(struct alloc_item* it) {
-	UNPOSION_REG(&(it->magic), sizeof(uint16_t));
-	UNPOSION_REG(it->data.poison_region, 16);
+static inline void checkimagic(struct alloc_item* it) {
+#if ALLOCATOR_DEBUG
 	assert(it->magic == ITEM_MAGIC); // pedantic
-	for (int j = 0; j < 16; j++) {
-			assert(it->data.poison_region[j] == 0xAA && "corrupt chunk");
-	}
-	POSION_REG(it->data.poison_region, 16);
-	POSION_REG(&(it->magic), sizeof(uint16_t));
+#else
+	(void)it;
+#endif
 }
 
 struct chunk* allocChunk(int16_t x, int16_t y) {
@@ -146,7 +129,7 @@ struct chunk* allocChunk(int16_t x, int16_t y) {
 
 	uint16_t i = 0;
 	for (i = n->empty; i < NODE_LEN; i++) {
-		if (n->items[i].busy == FREE_VALUE) { // cool
+		if (n->items[i].index == FREE_INDEX) { // cool
 			break;
 		}
 	}
@@ -154,11 +137,14 @@ struct chunk* allocChunk(int16_t x, int16_t y) {
 
 	assert(i < NODE_LEN && "heap corruption! (invalid count)");
 	n->count++; // one more item is busy now
-	n->items[i].busy = i; // hehe
+	n->items[i].index = i; // hehe
 
 	checkimagic(&(n->items[i])); // pedantic again
 
 	c89mtx_unlock(&alloc_mutex);
+
+	// small initialization.
+	// keep in mind, that all chunks are memsetted-zero by default and after free!
 	struct chunk* c = &(n->items[i].data); // well done	
 	c->pos.axis[0] = x;
 	c->pos.axis[1] = y;
@@ -170,13 +156,17 @@ static struct alloc_item* dataToNode(void* p, struct alloc_node** dst) {
 	struct alloc_item* it = (struct alloc_item*)((char*)p - offset);
 
 	checkimagic(it);
-	uint16_t i = it->busy;
-	assert(i < NODE_LEN); // including FREE_VALUE
+	uint16_t i = it->index;
+	assert(i < NODE_LEN); // including FREE_INDEX
 	struct alloc_item* fi = it - i; // first item
 	
 	const char* offset2 = &(((struct alloc_node*)0)->items);
 	struct alloc_node* n = (struct alloc_node*)((char*)fi - offset2);
-	checkmagic(n);
+	
+#if ALLOCATOR_DEBUG
+	assert(n->magic == NODE_MAGIC); // pedantic
+#endif
+
 	assert(n->items + i == it); // must be same
 	assert((void*)(&it->data) == p); // may be removed?
 
@@ -196,16 +186,12 @@ void freeChunk(struct chunk* orig) {
 	assert(n && it);
 
 	n->count--;
-	if (n->empty > it->busy) n->empty = it->busy; // set new empty node index
-	it->busy = FREE_VALUE; // yeah
+	if (n->empty > it->index) n->empty = it->index; // set new empty node index
+	it->index = FREE_INDEX; // yeah
 	checkimagic(it);
 
-	UNPOSION_REG(it->data.poison_region, 16);
-	memset(&it->data, 0, sizeof(struct chunk)); // important
-	for (int j = 0; j < 16; j++) {
-		it->data.poison_region[j] = 0xAA;
-	}
-	POSION_REG(it->data.poison_region, 16);
+	// allocated chunk excepted to be zeroed later on.
+	memset(&it->data, 0, sizeof(struct chunk));
 
 	c89mtx_unlock(&alloc_mutex); // done
 }

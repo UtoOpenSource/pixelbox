@@ -1,0 +1,10 @@
+---
+BasedOnStyle: Google
+MaxEmptyLinesToKeep: '1'
+PointerAlignment: Right
+SortIncludes: 'true'
+TabWidth: '2'
+UseTab: Always
+ColumnLimit: 70
+
+...
