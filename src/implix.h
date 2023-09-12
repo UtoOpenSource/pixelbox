@@ -29,8 +29,8 @@ struct chunk* allocChunk(int16_t x, int16_t y); // +
 void freeChunk(struct chunk*); // +
 
 void generateChunk(struct chunk*); 
-int  loadChunk(struct chunk*);
-void saveChunk(struct chunk*);
+int  loadChunk(struct chunk*); // don't use
+void saveChunk(struct chunk*); // directly!
 
 void addSaveQueue(struct chunk*); // FREES CHUNK AT THE END!!!
 void addLoadQueue(struct chunk*); // INSERTS CHUNK IN THE TABLE AT THE END!

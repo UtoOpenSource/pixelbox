@@ -48,51 +48,6 @@ static const char* init_sql =
 "CREATE TABLE IF NOT EXISTS WCHUNKS (id INTEGER PRIMARY KEY, value BLOB);"
 "PRAGMA optimize;";
 
-static bool getprop(const char* name, int64_t *out) {
-	if (World.database) {
-		bool loaded = false;
-		sqlite3_stmt* stmt = create_statement(
-				"SELECT value FROM PROPERTIES WHERE key = ?1;");
-		if (!stmt) {
-			perror(sqlite3_errmsg(World.database));
-			return false;
-		}
-		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
-		while (statement_iterator(stmt) > 0) {
-			*out = sqlite3_column_int64(stmt, 0);
-			loaded = true;
-		}
-		sqlite3_finalize(stmt);
-		return loaded;
-	}
-	return false;
-}
-
-bool loadProperty(const char* k, int64_t *v) {
-	return getprop(k, v);
-}
-
-static bool setprop(const char* name, int64_t v) {
-	if (World.database) {
-		sqlite3_stmt* stmt = create_statement(
-				"INSERT OR REPLACE INTO PROPERTIES VALUES(?1, ?2);");
-		if (!stmt) {
-			perror(sqlite3_errmsg(World.database));
-			return false;
-		}
-		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt, 2, v);
-		while (statement_iterator(stmt) > 0) {}
-		sqlite3_finalize(stmt);
-		return true;
-	}
-	fprintf(stderr, "property saving failture!");
-	return false;
-}
-
-bool saveProperty(const char* k, int64_t v) {
-	return setprop(k, v);
-}
 
 int  openWorld(const char* path) {
 	if (World.database) sqlite3_close_v2(World.database);
@@ -108,51 +63,15 @@ int  openWorld(const char* path) {
 		perror(msg);
 	};
 	int64_t v = 0;
-	if (getprop("seed", &v)) setWorldSeed(v);
-	if (getprop("mode", &v)) World.mode = v;
+	if (loadProperty("seed", &v)) setWorldSeed(v);
+	if (loadProperty("mode", &v)) World.mode = v;
 	return 0;
 }
 
-sqlite3_stmt* create_statement(const char* sql) {
-	sqlite3_stmt* ptr;
-	int err	= sqlite3_prepare_v3(World.database, sql, -1, 0,
-		&ptr, (const char**)0);
-	if (err != SQLITE_OK) {
-		perror(sqlite3_errmsg(World.database));
-		return NULL;
-	}
-	return ptr;
-}
-
-// returns 1 if there is still data to process
-// returns 0 if statement cmpleted successfully
-// returns -1 if error occured
-int statement_iterator(sqlite3_stmt* stmt) {
-	int attemts = 0, res = 0;
-	retry :
-	res = sqlite3_step(stmt);
-	if (res == SQLITE_BUSY) {
-		attemts++;
-		if (attemts < 100) goto retry;
-	}
-	if (res == SQLITE_DONE) {
-		// DONE
-	}
-	int stat;
-	if (res == SQLITE_DONE) stat = 0;
-	else if (res == SQLITE_ROW) stat = 1;
-	else {
-		stat = -1;
-		perror(sqlite3_errstr(res));
-		perror(sqlite3_errmsg(World.database));
-	}
-	if (stat < 1) sqlite3_reset(stmt);
-	return stat;
-}
 
 void flushWorld (void) {
-	setprop("seed", World.seed);
-	setprop("mode", World.mode);
+	saveProperty("seed", World.seed);
+	saveProperty("mode", World.mode);
 }
 
 void setWorldPixel(int64_t x, int64_t y, uint8_t val, bool mode) {
