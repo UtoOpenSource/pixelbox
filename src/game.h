@@ -33,12 +33,13 @@ struct screen {
 	void (*update)  (void);
 	void (*create)  (void);
 	void (*destroy) (void);
+	void (*onclose) (void);
 };
 
 extern struct screen ScrNull,
 	ScrMainMenu, ScrLicense,
 	ScrWorldList, ScrNewWorld,
-	ScrGamePlay;
+	ScrGamePlay, ScrSettings;
 
 void SetNextScreen(struct screen*); // and sets as current
 void SetRootScreen(struct screen*); // => sets as current. Cleanups stack
@@ -53,4 +54,8 @@ void WorldRefDestroy();
 int GuiTabBarEx(Rectangle bounds, int width, int closeable, const char **text, int count, int *active);
 int GuiTextView(Rectangle rec, const char* src);
 
-#define PBOX_VERSION 0.6
+extern bool game_working;
+
+Color getPixelColor(uint8_t p);
+
+#include "version.h"

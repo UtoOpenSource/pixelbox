@@ -21,17 +21,79 @@
 #include <stdio.h>
 #include <string.h>
 
+static int load_i = 0;
+static int save_i = 0;
+
+#define SCORE_SAVE 2
+#define SCORE_GEN  1
+#define SCORE_LOAD 1
+#define SCORE_MAX  5
+
+bool saveloadTick() {
+	bool done_something = false;
+	struct chunkmap* m = &World.load;
+	int limit = 0;
+
+	while (load_i < MAPLEN) {
+		while (m->data[load_i]) {
+			if (limit >= SCORE_MAX) goto skip_load; // exit NOW!
+			struct chunk* c = m->data[load_i];
+			struct chunk* n = c->next2; // get and remove
+			m->data[load_i] = n;
+			done_something = true;
+	
+			if (loadChunk(c) <= 0) {
+				generateChunk(c);
+				limit += SCORE_GEN;
+			} else limit += SCORE_LOAD;
+
+			c->usagefactor = CHUNK_USAGE_VALUE;
+			insertChunk(&World.map, c); // OK
+			//limit++;
+		}
+		load_i++;
+	}
+	load_i = 0; // restart
+
+	skip_load:
+	m = &World.save;
+	limit = 0;
+
+	while (save_i < MAPLEN) {
+		while (m->data[save_i]) {
+			if (limit >= SCORE_MAX) goto skip_save; // exit NOW!
+			struct chunk* c = m->data[save_i];
+			struct chunk* n = c->next2; // get and remove
+			m->data[save_i] = n;
+			done_something = true;
+
+			// don't save unchanged chunks
+			if (c->is_changed) saveChunk(c);
+
+			// free in that case!
+			if (!findChunk(&World.map, c->pos.axis[0], c->pos.axis[1])) {
+				freeChunk(c);
+			}
+
+			limit += SCORE_SAVE;
+		}
+		save_i++;
+	}
+	save_i = 0; // restart
+
+	skip_save:
+	return done_something;
+}
+
 void addSaveQueue(struct chunk* c) {
-	saveChunk(c);
-	freeChunk(c);
+	if (!findChunk(&World.save, c->pos.axis[0], c->pos.axis[1]))
+		insertChunk(&World.save, c);
 }
 
 void addLoadQueue(struct chunk* c) {
-	if (loadChunk(c) <= 0) {
-		generateChunk(c);
-	}
-	c->usagefactor = CHUNK_USAGE_VALUE;
-	insertChunk(&World.Map, c); // OK
+	//if (!findChunk(&World.load, c->pos.axis[0], c->pos.axis[1]))
+	c->is_changed = 0;
+	insertChunk(&World.load, c);
 }
 
 #include "profiler.h"
@@ -42,10 +104,14 @@ void addLoadQueue(struct chunk* c) {
 
 int  loadChunk(struct chunk* c) {
 	if (World.database) {
+		prof_begin(PROF_DISK);
 		bool loaded = false;
 		sqlite3_stmt* stmt = create_statement(
 				"SELECT value FROM WCHUNKS WHERE id = ?1;");
-		if (!stmt) return -2;
+		if (!stmt) {
+			prof_end();
+			return -2;
+		}
 		sqlite3_bind_int64(stmt, 1, c->pos.pack);
 		while (statement_iterator(stmt) > 0) {
 			const uint8_t* data = (uint8_t*)sqlite3_column_blob(stmt, 0);
@@ -55,6 +121,7 @@ int  loadChunk(struct chunk* c) {
 			}
 		}
 		sqlite3_finalize(stmt);
+		prof_end();
 		return loaded;
 	}
 	return -1;
@@ -62,13 +129,18 @@ int  loadChunk(struct chunk* c) {
 
 void saveChunk(struct chunk* c) {
 	if (World.database) {
+		prof_begin(PROF_DISK);
 sqlite3_stmt* stmt = create_statement(
 				"INSERT OR REPLACE INTO WCHUNKS VALUES(?1, ?2);");
-		if (!stmt) return;
+		if (!stmt) {
+			prof_end();
+			return;
+		}
 		sqlite3_bind_int64(stmt, 1, c->pos.pack);
 		sqlite3_bind_blob(stmt, 2, getChunkData(c, MODE_READ), CHUNK_WIDTH*CHUNK_WIDTH, SQLITE_STATIC);
 		while (statement_iterator(stmt) > 0) {}
 		sqlite3_finalize(stmt);
+		prof_end();
 	}
 }
 
@@ -121,13 +193,11 @@ bool saveProperty(const char* k, int64_t v) {
 sqlite3_stmt* create_statement(const char* sql) {
 	sqlite3_stmt* ptr;
 
-	prof_begin(PROF_DISK);
 	prof_begin(PROF_LOAD_INIT);
 
 	int err	= sqlite3_prepare_v3(World.database, sql, -1, 0,
 		&ptr, (const char**)0);
 
-	prof_end();
 	prof_end();
 
 	if (err != SQLITE_OK) {
@@ -142,8 +212,6 @@ sqlite3_stmt* create_statement(const char* sql) {
 // returns 0 if statement completed successfully
 // returns -1 if error occured
 int statement_iterator(sqlite3_stmt* stmt) {
-
-	prof_begin(PROF_DISK);
 
 	int attemts = 0, res = 0;
 	retry :
@@ -164,8 +232,6 @@ int statement_iterator(sqlite3_stmt* stmt) {
 		perror(sqlite3_errmsg(World.database));
 	}
 	if (stat < 1) sqlite3_reset(stmt);
-
-	prof_end();
 
 	return stat;
 }

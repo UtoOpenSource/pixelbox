@@ -79,14 +79,9 @@ static void draw() {
 
 	rec.x += rec.width + 4;
 	if (GuiButton(rec, "Open")) {
+			SetWindowTitle(TextFormat("[pixelbox] : %s", list[activez]));
 			openWorld(list[activez]);
 			SetRootScreen(&ScrGamePlay);
-			/*uint64_t len = strlen(list[active]);
-			if (world_db_path) free(world_db_path);
-			world_db_path = malloc(len+1);
-			assert(world_db_path);
-			memcpy(world_db_path, list[active], len+1);
-			*/
 	}
 	GuiEnable();
 	rec.y += 25;

@@ -2,6 +2,10 @@
 #include "implix.h"
 #include <stdlib.h>
 
+static inline struct chunk** next(struct chunk* c, bool g) {
+	return g ? &(c->next) : &(c->next2);
+}
+
 struct chunk* findChunk(struct chunkmap* m, int16_t x, int16_t y) {
 	union packpos pos;
 	pos.axis[0] = x;
@@ -11,7 +15,7 @@ struct chunk* findChunk(struct chunkmap* m, int16_t x, int16_t y) {
 	struct chunk* c = m->data[hash];
 	while (c) {
 		if (c->pos.pack == pos.pack) return c; // FOUND
-		c = c->next;
+		c = *next(c, m->g);
 	}
 	return c;
 }
@@ -21,7 +25,7 @@ void insertChunk(struct chunkmap* m, struct chunk* c) {
 	uint32_t hash = MAPHASH(c->pos.pack);
 	struct chunk* n = m->data[hash];
 	m->data[hash] = c;
-	c->next = n; 
+	*next(c, m->g) = n; 
 }
 
 struct chunk* removeChunk(struct chunkmap* m, struct chunk* c) {
@@ -29,7 +33,7 @@ struct chunk* removeChunk(struct chunkmap* m, struct chunk* c) {
 	struct chunk *f = m->data[hash], *old = NULL;
 	while (f != c) {
 		old = f;
-		f = f->next;
+		f = *next(f, m->g);
 	}
 
 	if (f == NULL) {
@@ -37,40 +41,43 @@ struct chunk* removeChunk(struct chunkmap* m, struct chunk* c) {
 		return NULL;
 	}; 
 
+	struct chunk* nn = *next(f, m->g);
 	if (old) {
-		old->next = f->next;
-		return old->next;
+		*next(old, m->g) = nn;
+		return nn;
 	}
-	m->data[hash] = f->next;
-	return f->next;
+	m->data[hash] = nn;
+	return nn;
 } // returns next chunk if avail.
 
-// magic. We may not remove, just put anything to save&free queue!
+// functions below are always working with the GLOBAL map, so we are using next field directly here :p
+
+// magic. We must remove and just put anything to save&free queue!
 void collectAnything (void) {
 	for (int i = 0; i < MAPLEN; i++) {
-		struct chunk* c = World.Map.data[i];
+		struct chunk* c = World.map.data[i];
 		while (c) {
 			struct chunk* f = c;
 			c = c->next;
 			addSaveQueue(f); // will be freed IN!
 		}
-		World.Map.data[i] = NULL;
+		World.map.data[i] = NULL; // optimisation for removal
 	}
 }
 
 int collectGarbage (void) {
 	int limit = 0;
 	for (int i = 0; i < MAPLEN; i++) {
-		struct chunk *c = World.Map.data[i], *old = NULL;
+		struct chunk *c = World.map.data[i], *old = NULL;
 		while (c) {
 			if (c->usagefactor >= 0) c->usagefactor--;
 			if (c->usagefactor < 0 && limit < 5) { // REMOVE AND COLLECT
 				struct chunk* f = c;
 				if (old) old->next = c->next; // remove
-				else World.Map.data[i] = c->next; // remove
+				else World.map.data[i] = c->next; // remove
 				c = c->next;
 				// old stays the same
-				addSaveQueue(f); // will be freed IN!
+				addSaveQueue(f); // will be freed IN (since it was removed!)!
 				limit++;
 			} else {
 				old = c;

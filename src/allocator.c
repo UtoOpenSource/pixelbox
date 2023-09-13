@@ -189,6 +189,10 @@ void freeChunk(struct chunk* orig) {
 	if (!orig) return;
 	c89mtx_lock(&alloc_mutex);
 
+	if (orig == &empty) {
+		((char*)NULL)[32] = 1; // crash
+	}
+
 	struct alloc_node* n = NULL;
 	struct alloc_item* it = dataToNode((void*)orig, &n);
 	assert(n && it);

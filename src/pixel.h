@@ -30,18 +30,21 @@ union packpos { // two int16_t!
 
 /* */
 struct chunk {
-	struct chunk* next;
+	struct chunk *next, *next2; // next2 for minimap!
 	union packpos pos;
 	uint8_t	atoms[CHUNK_WIDTH*CHUNK_WIDTH*2];
 	int8_t	usagefactor;
-	int8_t	needUpdate, wasUpdated;
+	int8_t	wasUpdated : 1;
+	int8_t  is_changed : 1;
 	bool		wIndex; 
 };
 
 #define MAPLEN 64 // must be pow of 2!
+#define MINILEN 64 // must be pow of 2!
 
 // specialized hashmap => chunkmap
 struct chunkmap {
+	bool g; // is global map?
 	struct chunk* data[MAPLEN];
 };
 
@@ -49,11 +52,16 @@ struct chunkmap {
 struct sqlite3;
 
 extern struct worldState {
-	uint64_t seed; // seed
 	uint64_t rngstate; // rng (== seed at the beginning)
 
-	struct chunkmap Map; // chunk map
+	struct chunkmap load; // load + worldgen queue
+	struct chunkmap save;
+	struct chunkmap update;
+	struct chunkmap map; // chunk map
+
 	int mode; // worldgen mode
+	uint64_t seed; // seed
+	uint64_t playtime;
 	
 	struct sqlite3* database; 
 } World;
@@ -72,6 +80,8 @@ void flushWorld(void); // save all unsaved chunks. Call after collectAnything()
 
 void collectAnything(void); // collect all chunks.
 int collectGarbage(void); // collect unused chunks
+
+bool saveloadTick(); // you must call this every tick for chunks to be loaded/saved!!!
 
 int32_t randomNumber(void); // used by main thread ONLY!
 float  noise2(float x, float y);
@@ -95,3 +105,6 @@ struct chunk* markWorldUpdate(int64_t x, int64_t y);
 // data
 bool loadProperty(const char* k, int64_t *v);
 bool saveProperty(const char* k, int64_t v);
+uint8_t softGenerate(int16_t ox, int16_t oy); // how chunk may look like
+
+extern struct chunk empty;

@@ -38,9 +38,12 @@ void WorldRefDestroy() {
 
 #include <limits.h>
 
+static float ptime_old = 0;
+
 static void create() {
 	WorldRefCreate();
 	initBuilder();
+	ptime_old = GetTime();
 
 	int64_t v;
 	if (loadProperty("zoom", &v)) {
@@ -124,7 +127,17 @@ static void draw() {
 	int i = 0;
 	for (int32_t y = y0; y < y1; y++) {
 		for (int32_t x = x0; x < x1; x++) {
-			renderChunk(getWorldChunk(x, y));
+			struct chunk* c = getWorldChunk(x, y);
+			
+			if (c == &empty) {
+				float rx = ((int32_t)c->pos.axis[0]) * CHUNK_WIDTH;
+				float ry = ((int32_t)c->pos.axis[1]) * CHUNK_WIDTH;
+				DrawRectangleRec(
+					(Rectangle){rx, ry, CHUNK_WIDTH, CHUNK_WIDTH},
+					getPixelColor(softGenerate(x, y))
+				);
+				continue;
+			} else renderChunk(c);
 			i++;
 		}
 	}
@@ -165,17 +178,11 @@ static void drawPallete(Rectangle rec) {
 
 	for (int i = 0; i < 64; i++) {
 		item = (Rectangle){
-			rec.x + 5 + (i % (350/27))*25,
-			rec.y + 5 + (i/(350/27))*25,
+			rec.x + 2 + (i % (350/27))*23,
+			rec.y + 2 + (i/(350/27))*23,
 			25, 25
 		};	
-		float kind = 0.5;
-		int type = i;
-		float r  = (type & 3) + kind;
-		float g  = ((type >> 2) & 3) + kind;
-		float b  = ((type >> 4) & 3) + kind;
-		Color color = {r/4.0*255, g/4.0*255, b/4.0*255, 1};
-		if (GuiColorButton(item, color, "RGB")) {
+		if (GuiColorButton(item, getPixelColor((i<<2)|3), "RGB")) {
 			color_material = i;
 		};
 	}
@@ -183,19 +190,7 @@ static void drawPallete(Rectangle rec) {
 
 #include "profiler.h"
 
-static Color prof_color(int entry) {
-	entry = entry + 1;
-
-	int r = !!(entry & 1);
-	int g = !!(entry & (1 << 1));
-	int b = !!(entry & (1 << 2));
-	int h = !!(entry & (1 << 3));
-	h = h * 55;
-	r = r * 200 + h;
-	g = g * 200 + h;
-	b = b * 200 + h;
-	return (Color) {r, g, b, 255};
-}
+void drawProfiler(Rectangle rec);
 
 static void drawStats(Rectangle rec) {
 	Rectangle item = (Rectangle){
@@ -211,54 +206,13 @@ static void drawStats(Rectangle rec) {
 		)
 	);
 	item.y += item.height + 5;
-}
-
-static void drawProfiler(Rectangle rec) {
-	Rectangle item = (Rectangle){
-		rec.x, rec.y,
-		rec.width-5, 10
-	};
-
-	item.height = (rec.y + rec.height) - item.y - 10;
-	item.width  = rec.width - 5; 
-	DrawRectangleRec(item, (Color){0, 0, 0, 255});
-
-	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
-		Rectangle o = (Rectangle){
-			item.x, item.y + i*8,
-			6, 6
-		};
-		DrawRectangleRec(o, prof_color(i));
-		o.x += 8;
-		o.width = rec.width - 5 - 8;
-		DrawText(prof_entries_names[i], o.x, o.y, 4, prof_color(i));	
-	}
-	
-	item.width  = rec.width - 75; 
-	item.x      = rec.x + 70; 
-	item.height = (rec.y + rec.height) - item.y - 10;
-
-	float max_value = 0;
-	for (int i = 0; i < PROF_HISTORY_LEN; i++) {
-		float v = prof_summary(PROF_GAMETICK)[i].owntime;
-		if (v > max_value) max_value = v;
-	}
-
-	float plot_scale = item.height / max_value;
-
-	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
-		struct prof_stats* stat = prof_summary(i);
-		Color color = prof_color(i);
-		for (int ix = 0; ix < PROF_HISTORY_LEN-1; ix++) {
-			float x = item.x + ix * item.width / PROF_HISTORY_LEN;
-			float x2 = item.x + (ix+1) * item.width / PROF_HISTORY_LEN;
-			float y  = stat[ix].owntime*plot_scale;
-			y = item.y + item.height - y;
-			float y2 = stat[ix+1].owntime*plot_scale;
-			y2 = item.y + item.height - y2;
-			DrawLine(x, y, x2, y2, color);
-		}
-	}
+	GuiLabel(item, TextFormat("In Game time : %i:%i:%i:%i", 
+		World.playtime/60/60/24, 
+		(World.playtime/60/60)%24,
+		(World.playtime/60)%60,
+		World.playtime%60)
+	);
+	item.y += item.height + 5;
 }
 
 static void drawGUI() {
@@ -373,9 +327,16 @@ static void update() {
 	if (allowupdate) updateWorld();
 	prof_end(PROF_UPDATE);
 
+	saveloadTick(); // done in
+
 	prof_begin(PROF_GC);
 	collectGarbage(); // important
 	prof_end();
+
+	if (ptime_old + 1 < GetTime()) {
+		ptime_old = GetTime();
+		World.playtime += 1;
+	}
 }
 
 struct screen ScrGamePlay = {

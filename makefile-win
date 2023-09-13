@@ -16,3 +16,6 @@ kisspixel.exe : $(OBJS)
 
 clean :
 	rm ./wbin/*.o
+
+# build raylib with this command (make shure it's static) : 
+# make CC=x86_64-w64-mingw32-gcc USE_EXTERNAL_GLFW=FALSE

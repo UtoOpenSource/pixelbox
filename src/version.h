@@ -1,0 +1,5 @@
+#define PBOX_VERSION_MAJOR 0
+#define PBOX_VERSION_MINOR 6
+#define PBOX_VERSION_PATCH 0
+
+#define PBOX_VERSION "0.6.0"

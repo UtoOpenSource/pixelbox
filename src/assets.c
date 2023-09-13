@@ -124,6 +124,8 @@ static AssetID hash_string(const char* str) { // MurmurHash
 	return h;
 }
 
+#include "profiler.h"
+
 static struct AssetNode* new_node(const char* path) {
 	const char* ext = extension_pos(path);
 	int type = check_type(ext);
@@ -131,7 +133,11 @@ static struct AssetNode* new_node(const char* path) {
 
 	switch (type) {
 		case ASSET_STRING: {
+
+			prof_begin(PROF_DISK);
 			char* data = LoadFileText(path);
+			prof_end();
+
 			if (!data) break;
 			int len = strlen(data) + 1;
 
@@ -147,7 +153,11 @@ static struct AssetNode* new_node(const char* path) {
 		} break;
 		case ASSET_TEXTURE: {
 			Texture2D texture = { 0 };
+
+			prof_begin(PROF_DISK);
 			Image img = LoadImage(path);
+			prof_end();
+
 			if (img.data == NULL) break;
 			texture = LoadTextureFromImage(img);
 			UnloadImage(img);

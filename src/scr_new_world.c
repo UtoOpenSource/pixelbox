@@ -91,6 +91,7 @@ static void draw() {
 			goto skip_load;
 		else
 			src = TextFormat("./saves/%s.db", filename);
+		SetWindowTitle(TextFormat("[pixelbox] : %s", src));
 		openWorld(src);
 
 skip_load:

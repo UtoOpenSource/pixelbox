@@ -50,7 +50,6 @@ static inline void markUpdate(const struct updater* u, int8_t x, int8_t y) {
 		struct chunk* ch 
 		= markWorldUpdate((uint64_t)u->c->pos.axis[0]*CHUNK_WIDTH + x, 
 			(uint64_t)u->c->pos.axis[1]*CHUNK_WIDTH + y);
-		//printf("should be not self update!\n");
 		assert(ch != u->c);
 	} else {
 		assert(y >= 0 && y < CHUNK_WIDTH);
@@ -81,21 +80,22 @@ static void processor(struct updater* u) {
 
 #include <string.h>
 
-void updateChunk(struct chunk* c) {
+bool updateChunk(struct chunk* c) {
 	struct updater u = {c, 0, 0, 0}; // SHOULD be optimized out...
 	uint8_t* read = getChunkData(u.c, MODE_READ);
 	uint8_t* writ = getChunkData(u.c, MODE_WRITE);
-	c->needUpdate = 0; // OK
+	bool need  = false;
 
 	for (u.y = 0; u.y < CHUNK_WIDTH; u.y++) {
 		for (u.x = 0; u.x < CHUNK_WIDTH; u.x++) {
 			u.v = read[u.x + u.y * CHUNK_WIDTH];
 			processor(&u);
 			if (u.v != read[u.x + u.y * CHUNK_WIDTH])
-				c->needUpdate = 1;
+				need = true;
 			writ[u.x + u.y * CHUNK_WIDTH] = u.v;
 		}
 	}
+	return need;
 }
 
 #include <string.h>
@@ -104,34 +104,40 @@ void updateWorld(void) {
 
 	while (true) {
 		for (int i = 0; i < MAPLEN; i++) {
-			struct chunk* c = World.Map.data[i];
+			struct chunk* c = World.update.data[i];
+			struct chunk* p = NULL;
 			while (c) {
 
 				if (c->wasUpdated) { // skip
-					c = c->next;
+					c = c->next2;
 					continue;
 				}
 
-				if (c->needUpdate) {
-					updateChunk(c);
-					c->wasUpdated = 1;
-					cnt++;
+				if (!updateChunk(c)) { // nothing happened in it
+					if (p) p->next2 = c->next2;
+					else World.update.data[i] = c->next2; 
+					c = c->next2; // remove
+					continue;
 				};
-				c = c->next;	
+				c->is_changed = 1;
+				c->wasUpdated = 1;
+				cnt++;
+
+				p = c; // set prev;
+				c = c->next2;	
 			}
-		} 
+		}
 		if (cnt == 0) break; // all chunks are done!
 		cnt = 0; // try again...
 	}
 
 	// remove "was updated" flags
 	for (int i = 0; i < MAPLEN; i++) {
-		struct chunk* c = World.Map.data[i];
+		struct chunk* c = World.update.data[i];
 		while (c) {
 			if (c->wasUpdated) c->wIndex = !c->wIndex;
 			c->wasUpdated = 0;
-			c = c->next;
+			c = c->next2;
 		}
 	}
 }
-

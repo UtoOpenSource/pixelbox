@@ -28,82 +28,91 @@ uint8_t* getChunkData(struct chunk* c, const bool mode) {
 #include <string.h>
 #include <math.h>
 
-static void generateChunkNormal(struct chunk* c);
-static void generateChunkFlat(struct chunk* c);
-static void generateChunkSponge(struct chunk* c);
-
 #include "profiler.h"
-
-void generateChunk(struct chunk* c) {
-	prof_begin(PROF_GENERATOR);
-	switch (World.mode) {
-		case 0 : generateChunkNormal(c); break;
-		case 1 : generateChunkFlat(c); break;
-		case 2 : generateChunkSponge(c); break;
-		default: break;
-	}
-	prof_end();
-}
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-static void generateChunkNormal(struct chunk* c) {
-	uint8_t* data = getChunkData(c, MODE_READ);
-	for (int x = 0; x < CHUNK_WIDTH; x++) {
-		for (int y = 0; y < CHUNK_WIDTH; y++) {
-			int ax = (x + (int)c->pos.axis[0]*CHUNK_WIDTH);
-			int ay = (y + (int)c->pos.axis[1]*CHUNK_WIDTH);
-			float v;
+static uint8_t gen_normal(int32_t ax, int32_t ay) {
+	float v;
+	
+	// "cave"
+	float c = noise2(ax/64.0, ay/64.0) + 0.1;
+	c = c * sinf(noise2(ax/128.0, ay/128.0));
+	c = c - MAX(noise2(ax/512.0, ay/512.0), 0.2) 
+		* noise2(ax/2048.0, ay/2048.0);
 
-			// "cave"
-			float c = noise2(ax/64.0, ay/64.0) + 0.1;
-			c = c * sinf(noise2(ax/128.0, ay/128.0));
-			c = c - MAX(noise2(ax/512.0, ay/512.0), 0.2) 
-				* noise2(ax/2048.0, ay/2048.0);
+	v = c;
+	if (v > 0.09) {
+		c *= 0.5;
+		v = noise2(ax/124.0, ay/124.0) + c;
+		v = v > 1.0 ? v : 1.0 - v;
+		v += 0.02;
+	} else v = 0; 
 
-			v = c;
-			if (v > 0.1) {
-				c *= 0.5;
-				v = noise2(ax/124.0, ay/124.0) + c;
-				v = v > 1.0 ? v : 1.0 - v;
-				v += 0.02;
-			} else v = 0; 
-			data[x + y * CHUNK_WIDTH] = v*255;
-		}
-	}
+	return v*255;
 }
 
-static void generateChunkSponge(struct chunk* c) {
+static uint8_t gen_sponge(int32_t ax, int32_t ay) {
+	long int pow = 1;
+	int v = 0;
+
+	for (int deep = 0; deep < 10; deep++) {
+		if ((ax/pow)%3 == 1 && (ay/pow)%3==1) goto skip_set;
+		pow = pow * 3;
+	}
+	v = noise2(ax/512.0, ay/512.0) * 128 + 128;
+	skip_set:
+	return v;
+}
+
+static uint8_t gen_flat(int32_t ax, int32_t ay) {
+	int v = ((ax & 1023) == 64) + ((ay & 1023) == 64);
+	return v ? (v+1)<<2 : 0;
+}
+
+static uint8_t (*generators[])(int32_t x, int32_t y) = {
+	gen_normal,
+	gen_flat,
+	gen_sponge,
+	NULL
+};
+
+uint8_t softGenerate(int16_t ox, int16_t oy) {
+	int x = (int32_t)ox*CHUNK_WIDTH;
+	int y = (int32_t)oy*CHUNK_WIDTH;
+
+	uint8_t (*generator)(int32_t x, int32_t y);
+	if (World.mode < 0) generator = generators[1];
+	else generator = World.mode < 3 ? generators[World.mode] : generators[1];
+
+	const int z = CHUNK_WIDTH-1;
+	int v = 0;
+	v += generator(x + 0, y + 0);
+	v += generator(x + z, y + 0);
+	v += generator(x + z, y + z);
+	v += generator(x + 0, y + z);
+	v /= 4;
+	return v;
+}
+
+void generateChunk(struct chunk* c) {
+	prof_begin(PROF_GENERATOR);
+
 	uint8_t* data = getChunkData(c, MODE_READ);
+	uint8_t (*generator)(int32_t x, int32_t y);
+
+	if (World.mode < 0) generator = generators[1];
+	else generator = World.mode < 3 ? generators[World.mode] : generators[1];
+
 	for (int x = 0; x < CHUNK_WIDTH; x++) {
 		for (int y = 0; y < CHUNK_WIDTH; y++) {	
-			int ax = (x + (int)c->pos.axis[0]*CHUNK_WIDTH);
-			int ay = (y + (int)c->pos.axis[1]*CHUNK_WIDTH);
-			long int pow = 1;
-			int v = 0;
-
-			for (int deep = 0; deep < 10; deep++) {
-				if ((ax/pow)%3 == 1 && (ay/pow)%3==1) goto skip_set;
-				pow = pow * 3;
-			}
-			v = noise2(ax/512.0, ay/512.0) * 128 + 128;
-			skip_set:
-			data[x + y * CHUNK_WIDTH] = v;
+			data[x + y * CHUNK_WIDTH] = generator(
+				(int32_t)c->pos.axis[0]*CHUNK_WIDTH + x,
+				(int32_t)c->pos.axis[1]*CHUNK_WIDTH + y
+			);
 		}
 	}
-}
 
-static void generateChunkFlat(struct chunk* c) {
-	uint8_t* data = getChunkData(c, MODE_READ);
-	for (int x = 0; x < CHUNK_WIDTH; x++) {
-		for (int y = 0; y < CHUNK_WIDTH; y++) {
-			int ax = (x + (int)c->pos.axis[0]*CHUNK_WIDTH);
-			int ay = (y + (int)c->pos.axis[1]*CHUNK_WIDTH);
-			int v;
-	
-			v = ((ax & 1023) == 64) + ((ay & 1023) == 64);
-			data[x + y * CHUNK_WIDTH] = v ? (v+1)<<2 : 0;
-		}
-	}
+	prof_end();
 }
 

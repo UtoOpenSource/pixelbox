@@ -26,8 +26,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-static void create() {
+const char* getSplash();
+void        rngSplash();
 
+static void create() {
+	rngSplash();
+	SetWindowTitle(TextFormat("[pixelbox] : %s", getSplash()));
 }
 
 static void destroy() {
@@ -36,7 +40,7 @@ static void destroy() {
 
 #include "assets.h"
 static const char* title_text = 
-"there is one\nsusposter\namulgus"
+"an infinite 2D\nsandbox game!\n"
 ;
 
 const char* splash = "indev!";
@@ -48,16 +52,19 @@ static void draw() {
 	Rectangle rec = GuiMenuWindow("Pixelbox");
 
 	Rectangle item = {rec.x, rec.y, 100, 100};
-	item.x += rec.width/2 - 50 - 50;
+	item.x += rec.width/2 - 50 - 70;
 	GuiAssetTexture(item, LookupAssetID("icon.png"));
 	item.x += 105;
-	item.width = 90;
-	GuiLabel(item, TextFormat("Pixelbox v.%1.1f\n%s",
-		(float) PBOX_VERSION, title_text));
+	item.width = 140;
+	GuiLabel(item, TextFormat("Pixelbox v.%s\n%s%s",
+		PBOX_VERSION, title_text, getSplash()));
 	
 	rec.y += 100 + 5;
 	rec.height -= 100 + 5;
 	item = (Rectangle){rec.x, rec.y, rec.width, 25};
+
+	rec.y += 10;
+	rec.height -= 12;
 
 	if (GuiButton(item, "Open World")) {
 		SetNextScreen(&ScrWorldList);
@@ -70,11 +77,16 @@ static void draw() {
 
 	item.y += item.height + 5;
 	Rectangle old = item;
-	item.width = item.width / 2 - 5;
+	item.width = item.width / 2 - 2;
 	
-	GuiButton(item, "Settings");
-	item.x += item.width + 5;
-	GuiButton(item, "Exit program");
+	if (GuiButton(item, "Settings")) {
+		SetNextScreen(&ScrSettings);
+	};
+
+	item.x += item.width + 4;
+	if (GuiButton(item, "Exit program")) {
+		game_working = false;
+	};
 
 	item = old;
 

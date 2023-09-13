@@ -27,14 +27,39 @@ struct worldState World;
 int initWorld(void) {
 	World.database = NULL;
 	setWorldSeed(time(NULL));
-	memset(&World.Map, 0, sizeof(World.Map));
+	memset(&World.map, 0, sizeof(World.map));
+	World.map.g = true; // IMPORTANT!
 	return 0;
+}
+
+#include "profiler.h"
+
+void flushWorld (void) {
+	saveProperty("seed", World.seed);
+	saveProperty("mode", World.mode);
+	saveProperty("playtime", World.playtime);
+
+	// heheboi
+	for (int i = 0; i < MAPLEN; i++) {
+		struct chunk* c = World.load.data[i];
+		while (c) {
+			struct chunk *f = c;
+			c = removeChunk(&World.load, c);
+			freeChunk(f);
+		}
+		World.load.data[i] = NULL;
+	}
+
+	while (saveloadTick()) {} // hell yeah
 }
 
 void freeWorld(void) {
 	collectAnything();
 	flushWorld();
+
+	prof_begin(PROF_DISK);
 	if (World.database) sqlite3_close_v2(World.database);
+	prof_end();
 }
 
 static const char* init_sql = 
@@ -67,13 +92,8 @@ int  openWorld(const char* path) {
 	int64_t v = 0;
 	if (loadProperty("seed", &v)) setWorldSeed(v);
 	if (loadProperty("mode", &v)) World.mode = v;
+	if (loadProperty("playtime", &v)) World.playtime = v;
 	return 0;
-}
-
-
-void flushWorld (void) {
-	saveProperty("seed", World.seed);
-	saveProperty("mode", World.mode);
 }
 
 void setWorldPixel(int64_t x, int64_t y, uint8_t val, bool mode) {
@@ -83,6 +103,7 @@ void setWorldPixel(int64_t x, int64_t y, uint8_t val, bool mode) {
 	ch = getWorldChunk(cx, cy);
 	int ax = (uint64_t)x%CHUNK_WIDTH;
 	int ay = (uint64_t)y%CHUNK_WIDTH;
+	ch->is_changed = 1; // yeah...
 	getChunkData(ch, mode)[ax + ay * CHUNK_WIDTH] = val;	
 }
 
@@ -96,23 +117,58 @@ uint8_t getWorldPixel(int64_t x, int64_t y, bool mode) {
 	return getChunkData(ch, mode)[ax + ay * CHUNK_WIDTH];	
 }
 
+struct chunk empty = {0};
+
 struct chunk* markWorldUpdate(int64_t x, int64_t y) {
 	int64_t cx = (uint64_t)x/CHUNK_WIDTH;
 	int64_t cy = (uint64_t)y/CHUNK_WIDTH;
 
 	struct chunk* ch;
+	ch = findChunk(&World.update, cx, cy);
+	if (ch) return ch; // already in queue
+
+	// add to the queue
 	ch = getWorldChunk(cx, cy);
-	//int ax = (unsigned int)x%CHUNK_WIDTH;
-	//int ay = (unsigned int)y%CHUNK_WIDTH;
-	ch->needUpdate = 1;	
+	if (ch == &empty) {
+		empty.pos.axis[0] = cx;
+		empty.pos.axis[1] = cy;
+		return ch; // no
+	}
+	insertChunk(&World.update, ch);
 	return ch;
 }
 
+// noinline!
+static struct chunk* slow_loading_path(int16_t x, int16_t y) {
+	struct chunk* c;
+
+	// if still loading...
+	if (findChunk(&World.load, x, y)) {
+		empty.pos.axis[0] = x;
+		empty.pos.axis[1] = y;
+		return &empty;
+	}
+
+	// if saving...
+	c = findChunk(&World.save, x, y);
+	if (c) {
+		c->usagefactor = CHUNK_USAGE_VALUE;
+		insertChunk(&World.map, c); // prevent from being freed!
+		return c;
+	}
+
+	// wait new chunk to be loaded...
+	c = allocChunk(x, y);
+	addLoadQueue(c); // RETURN NULL!!!
+	empty.pos.axis[0] = x;
+	empty.pos.axis[1] = y;
+	return &empty;
+}
+
 struct chunk* getWorldChunk(int16_t x, int16_t y) {
-	struct chunk* c = findChunk(&World.Map, x, y);
+	struct chunk* c = findChunk(&World.map, x, y);
 	if (!c) {
-		c = allocChunk(x, y);
-		addLoadQueue(c); // TODO RETURN NULL AND WAIT!!!
+		return slow_loading_path(x, y); // ok
 	}
 	c->usagefactor = CHUNK_USAGE_VALUE;
 	return c;

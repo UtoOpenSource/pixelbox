@@ -23,7 +23,20 @@
 #define CHUNK_USAGE_VALUE 25
 
 #define MAPINT(V) ((V) & (MAPLEN-1))
-#define MAPHASH(V) MAPINT(V ^ (V*234975434)) // hash & mapfunc
+
+static inline uint32_t hash_function(uint32_t value) {
+	char* v = (char*)&value;
+	uint32_t hash = 0;
+#define HASH_STEP() hash += *v; hash -= (hash << 13) | (hash >> 19); v++;
+	HASH_STEP();
+	HASH_STEP();
+	HASH_STEP();
+	HASH_STEP();
+#undef HASH_STEP
+	return hash;
+}
+	
+#define MAPHASH(V) MAPINT(hash_function(V)) // hash & mapfunc
 
 struct chunk* allocChunk(int16_t x, int16_t y); // +
 void freeChunk(struct chunk*); // +
@@ -44,4 +57,4 @@ struct chunk* findChunk(struct chunkmap* m, int16_t x, int16_t y); // NULL if no
 void insertChunk(struct chunkmap* m, struct chunk* c); 
 struct chunk* removeChunk(struct chunkmap* m, struct chunk* c); // returns next chunk if avail.
 
-void updateChunk(struct chunk* c);
+bool updateChunk(struct chunk* c);

@@ -151,3 +151,69 @@ struct prof_stats* prof_summary(int entry) {
 	assert(entry >= 0 && entry < PROF_ENTRIES_COUNT);
 	return prof_history[entry];
 }
+
+#include "raygui.h"
+
+
+static Color prof_color(int entry) {
+	entry = entry + 1;
+
+	int r = !!(entry & 1);
+	int g = !!(entry & (1 << 1));
+	int b = !!(entry & (1 << 2));
+	int h = !!(entry & (1 << 3));
+	h = h * 55;
+	r = r * 200 + h;
+	g = g * 200 + h;
+	b = b * 200 + h;
+	return (Color) {r, g, b, 255};
+}
+
+void drawProfiler(Rectangle rec) {
+	Rectangle item = (Rectangle){
+		rec.x, rec.y,
+		rec.width-5, 10
+	};
+
+	item.height = (rec.y + rec.height) - item.y - 10;
+	item.width  = rec.width - 5; 
+	DrawRectangleRec(item, (Color){0, 0, 0, 255});
+
+	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
+		Rectangle o = (Rectangle){
+			item.x, item.y + i*8,
+			6, 6
+		};
+		DrawRectangleRec(o, prof_color(i));
+		o.x += 8;
+		o.width = rec.width - 5 - 8;
+		DrawText(prof_entries_names[i], o.x, o.y, 4, prof_color(i));	
+	}
+	
+	item.width  = rec.width - 75; 
+	item.x      = rec.x + 70; 
+	item.height = (rec.y + rec.height) - item.y - 10;
+
+	float max_value = 0;
+	for (int i = 0; i < PROF_HISTORY_LEN; i++) {
+		float v = prof_summary(PROF_GAMETICK)[i].sumtime;
+		if (v > max_value) max_value = v;
+	}
+
+	float plot_scale = item.height / max_value;
+
+	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
+		struct prof_stats* stat = prof_summary(i);
+		Color color = prof_color(i);
+		for (int ix = 0; ix < PROF_HISTORY_LEN-1; ix++) {
+			float x = item.x + ix * item.width / PROF_HISTORY_LEN;
+			float x2 = item.x + (ix+1) * item.width / PROF_HISTORY_LEN;
+			float y  = stat[ix].owntime*plot_scale;
+			y = item.y + item.height - y;
+			float y2 = stat[ix+1].owntime*plot_scale;
+			y2 = item.y + item.height - y2;
+			DrawLine(x, y, x2, y2, color);
+		}
+	}
+}
+

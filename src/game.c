@@ -81,7 +81,9 @@ void GuiLoadStyleDark();
 
 #include "profiler.h"
 
-static void frame() {
+bool game_working = true;
+
+static void frame(bool should_close) {
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
 
@@ -109,23 +111,38 @@ static void frame() {
 			SCREEN = CHANGE;
 			CHANGE = NULL;
 		}
+		if (should_close) {
+			if (SCREEN && SCREEN->onclose) SCREEN->onclose();
+			else game_working = false;
+		}
 		prof_end();
 }
 
+Color getPixelColor(uint8_t val) {
+	float kind = (val & 3)/6.0;
+	int   type = (val >> 2) & 63;
+	float r  = (type & 3) + kind;
+	float g  = ((type >> 2) & 3) + kind;
+	float b  = ((type >> 4) & 3) + kind;
+	Color color = {r/4.0*255, g/4.0*255, b/4.0*255, 255};
+	return color;
+}
+
 int main() {
+	prof_begin(PROF_LOAD_INIT);
 	_initAtoms();
 	SetTraceLogLevel(LOG_DEBUG);
 	SetConfigFlags(FLAG_VSYNC_HINT);
-	InitWindow(640, 480, "[PixelBox] : amazing description");
+	InitWindow(640, 480, "[PixelBox] : loading");
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	GuiLoadStyleDark();
 	initAssetSystem();
-
 	SetRootScreen(&ScrMainMenu);
+	prof_end();
 
-	while (!WindowShouldClose()) { 
+	while (game_working) { //!) { 
 		prof_begin(PROF_GAMETICK);
-		frame();
+		frame(WindowShouldClose());
 		prof_end();
 
 		prof_step();
