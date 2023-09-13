@@ -1,0 +1,18 @@
+.PHONY: kisspixel.exe clean
+
+include makecfg
+
+SRCS := $(shell find ./src/ -name '*.c')
+OBJS := $(SRCS:./src/%.c=./wbin/%.o)
+FLAGS += 
+CC := x86_64-w64-mingw32-gcc 
+
+kisspixel.exe : $(OBJS)
+	$(CC) $^ libraylib.a -o $@ -static -static-libgcc -lm -lgdi32 -lwinmm -lpthread $(FLAGS)
+
+./wbin/%.o : ./src/%.c
+	mkdir -p $(dir $@)
+	$(CC) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS)
+
+clean :
+	rm ./wbin/*.o

@@ -1,9 +1,10 @@
 .PHONY: kisspixel clean
 
-INCS := -I./src/ -I./src/libs
+include makecfg
+
 SRCS := $(shell find ./src/ -name '*.c')
 OBJS := $(SRCS:./src/%.c=./bin/%.o)
-FLAGS := -Og -fsanitize=address -fsanitize=undefined -g 
+FLAGS +=  
 
 kisspixel : $(OBJS)
 	$(CC) $^ -o $@ -lm -lpthread -lraylib $(FLAGS)

@@ -5,3 +5,5 @@
 *.wasm
 *.a
 *.html
+*.dll
+*.exe
