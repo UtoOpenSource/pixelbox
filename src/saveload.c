@@ -34,6 +34,8 @@ void addLoadQueue(struct chunk* c) {
 	insertChunk(&World.Map, c); // OK
 }
 
+#include "profiler.h"
+
 // SQLITE PART IS HERE NOW! :З
 // but initialization is still in the world.c :/
 #include <sqlite3.h>
@@ -118,8 +120,16 @@ bool saveProperty(const char* k, int64_t v) {
 
 sqlite3_stmt* create_statement(const char* sql) {
 	sqlite3_stmt* ptr;
+
+	prof_begin(PROF_DISK);
+	prof_begin(PROF_LOAD_INIT);
+
 	int err	= sqlite3_prepare_v3(World.database, sql, -1, 0,
 		&ptr, (const char**)0);
+
+	prof_end();
+	prof_end();
+
 	if (err != SQLITE_OK) {
 		perror(sqlite3_errmsg(World.database));
 		return NULL;
@@ -127,10 +137,14 @@ sqlite3_stmt* create_statement(const char* sql) {
 	return ptr;
 }
 
+
 // returns 1 if there is still data to process
 // returns 0 if statement completed successfully
 // returns -1 if error occured
 int statement_iterator(sqlite3_stmt* stmt) {
+
+	prof_begin(PROF_DISK);
+
 	int attemts = 0, res = 0;
 	retry :
 	res = sqlite3_step(stmt);
@@ -150,5 +164,8 @@ int statement_iterator(sqlite3_stmt* stmt) {
 		perror(sqlite3_errmsg(World.database));
 	}
 	if (stat < 1) sqlite3_reset(stmt);
+
+	prof_end();
+
 	return stat;
 }

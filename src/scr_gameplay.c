@@ -147,6 +147,7 @@ static const char* tabs[] = {
 	"world",
 	"pallete",
 	"stats",
+	"profiler",
 	NULL
 };
 
@@ -210,12 +211,16 @@ static void drawStats(Rectangle rec) {
 		)
 	);
 	item.y += item.height + 5;
+}
 
-	GuiLine(item, "Profiling : ");
-	item.y += item.height + 5;
+static void drawProfiler(Rectangle rec) {
+	Rectangle item = (Rectangle){
+		rec.x, rec.y,
+		rec.width-5, 10
+	};
 
 	item.height = (rec.y + rec.height) - item.y - 10;
-	item.width  = rec.width - 20; 
+	item.width  = rec.width - 5; 
 	DrawRectangleRec(item, (Color){0, 0, 0, 255});
 
 	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
@@ -225,12 +230,12 @@ static void drawStats(Rectangle rec) {
 		};
 		DrawRectangleRec(o, prof_color(i));
 		o.x += 8;
-		o.width = rec.width - 20 - 8;
+		o.width = rec.width - 5 - 8;
 		DrawText(prof_entries_names[i], o.x, o.y, 4, prof_color(i));	
 	}
 	
-	item.width  = rec.width - 70; 
-	item.x      = rec.x + 50; 
+	item.width  = rec.width - 75; 
+	item.x      = rec.x + 70; 
 	item.height = (rec.y + rec.height) - item.y - 10;
 
 	float max_value = 0;
@@ -279,7 +284,7 @@ static void drawGUI() {
 
 	int old = rec.height;
 	rec.height = 20;
-	GuiTabBarEx(rec, 80, false, tabs, 3, &active_tab);
+	GuiTabBarEx(rec, 80, false, tabs, 4, &active_tab);
 	rec.y += 25;
 	rec.height = old - 25;
 	rec.x += 5;
@@ -293,6 +298,20 @@ static void drawGUI() {
 	switch(active_tab) {
 		case 0 : {// world
 			allowupdate = GuiToggle(item, "Enable Physic", allowupdate);
+			item.y += item.height + 5;
+
+			GuiButton(item, "Dummy");
+			item.y += item.height + 5;
+
+			GuiButton(item, "Dummy");
+			item.y += item.height + 5;
+
+			GuiButton(item, "Dummy");
+			item.y += item.height + 5;
+
+			if (GuiButton(item, "Save and exit")) {
+				SetRootScreen(&ScrMainMenu);	
+			};
 		}; break;
 		case 1 : {// pallete 
 			drawPallete(rec);
@@ -300,8 +319,11 @@ static void drawGUI() {
 		case 2 : {// stats
 			drawStats(rec);
 		}; break;
+		case 3 :
+			drawProfiler(rec);
+		break;
 		default :
-
+			
 		break;
 	}
 }

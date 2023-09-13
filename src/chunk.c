@@ -32,13 +32,17 @@ static void generateChunkNormal(struct chunk* c);
 static void generateChunkFlat(struct chunk* c);
 static void generateChunkSponge(struct chunk* c);
 
+#include "profiler.h"
+
 void generateChunk(struct chunk* c) {
+	prof_begin(PROF_GENERATOR);
 	switch (World.mode) {
 		case 0 : generateChunkNormal(c); break;
 		case 1 : generateChunkFlat(c); break;
 		case 2 : generateChunkSponge(c); break;
 		default: break;
 	}
+	prof_end();
 }
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
