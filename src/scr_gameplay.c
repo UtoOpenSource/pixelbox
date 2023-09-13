@@ -154,6 +154,108 @@ static int active_tab = 1;
 static int allowupdate = 0;
 static int window_hidden = 0;
 
+bool GuiColorButton(Rectangle bounds, Color color, const char *text);
+
+static void drawPallete(Rectangle rec) {
+	Rectangle item = (Rectangle){
+		rec.x, rec.y,
+		rec.width/3, 25
+	};
+
+	for (int i = 0; i < 64; i++) {
+		item = (Rectangle){
+			rec.x + 5 + (i % (350/27))*25,
+			rec.y + 5 + (i/(350/27))*25,
+			25, 25
+		};	
+		float kind = 0.5;
+		int type = i;
+		float r  = (type & 3) + kind;
+		float g  = ((type >> 2) & 3) + kind;
+		float b  = ((type >> 4) & 3) + kind;
+		Color color = {r/4.0*255, g/4.0*255, b/4.0*255, 1};
+		if (GuiColorButton(item, color, "RGB")) {
+			color_material = i;
+		};
+	}
+}
+
+#include "profiler.h"
+
+static Color prof_color(int entry) {
+	entry = entry + 1;
+
+	int r = !!(entry & 1);
+	int g = !!(entry & (1 << 1));
+	int b = !!(entry & (1 << 2));
+	int h = !!(entry & (1 << 3));
+	h = h * 55;
+	r = r * 200 + h;
+	g = g * 200 + h;
+	b = b * 200 + h;
+	return (Color) {r, g, b, 255};
+}
+
+static void drawStats(Rectangle rec) {
+	Rectangle item = (Rectangle){
+		rec.x, rec.y,
+		rec.width-25, 10
+	};
+
+	GuiLabel(item, TextFormat("CAM POS = %i:%i[in chunks=%i:%i]", 
+		(int)cam.target.x,
+		(int)cam.target.y,
+		(unsigned int)cam.target.x/CHUNK_WIDTH,
+		(unsigned int)cam.target.y/CHUNK_WIDTH
+		)
+	);
+	item.y += item.height + 5;
+
+	GuiLine(item, "Profiling : ");
+	item.y += item.height + 5;
+
+	item.height = (rec.y + rec.height) - item.y - 10;
+	item.width  = rec.width - 20; 
+	DrawRectangleRec(item, (Color){0, 0, 0, 255});
+
+	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
+		Rectangle o = (Rectangle){
+			item.x, item.y + i*8,
+			6, 6
+		};
+		DrawRectangleRec(o, prof_color(i));
+		o.x += 8;
+		o.width = rec.width - 20 - 8;
+		DrawText(prof_entries_names[i], o.x, o.y, 4, prof_color(i));	
+	}
+	
+	item.width  = rec.width - 70; 
+	item.x      = rec.x + 50; 
+	item.height = (rec.y + rec.height) - item.y - 10;
+
+	float max_value = 0;
+	for (int i = 0; i < PROF_HISTORY_LEN; i++) {
+		float v = prof_summary(PROF_GAMETICK)[i].owntime;
+		if (v > max_value) max_value = v;
+	}
+
+	float plot_scale = item.height / max_value;
+
+	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
+		struct prof_stats* stat = prof_summary(i);
+		Color color = prof_color(i);
+		for (int ix = 0; ix < PROF_HISTORY_LEN-1; ix++) {
+			float x = item.x + ix * item.width / PROF_HISTORY_LEN;
+			float x2 = item.x + (ix+1) * item.width / PROF_HISTORY_LEN;
+			float y  = stat[ix].owntime*plot_scale;
+			y = item.y + item.height - y;
+			float y2 = stat[ix+1].owntime*plot_scale;
+			y2 = item.y + item.height - y2;
+			DrawLine(x, y, x2, y2, color);
+		}
+	}
+}
+
 static void drawGUI() {
 	GuiPanel(winrec, TextFormat("[PIXELBOX] (%i FPS)", (int)GetFPS()));
 	Rectangle rec = (Rectangle) { // Hide button rectangle
@@ -193,23 +295,10 @@ static void drawGUI() {
 			allowupdate = GuiToggle(item, "Enable Physic", allowupdate);
 		}; break;
 		case 1 : {// pallete 
-			int new = GuiToggle(item, "random", color_material < 0);
-			if (new != (color_material < 0)) { 
-				if (new) color_material = -1; 
-				else color_material = 0;
-			}
+			drawPallete(rec);
 		}; break;
 		case 2 : {// stats
-			GuiLine(item, "stats");
-			item.y += item.height;
-
-			GuiLine(item, TextFormat("%i:%i[%i:%i]", 
-				(int)cam.target.x,
-				(int)cam.target.y,
-				(unsigned int)cam.target.x/CHUNK_WIDTH,
-				(unsigned int)cam.target.y/CHUNK_WIDTH
-				)
-			);
+			drawStats(rec);
 		}; break;
 		default :
 
@@ -258,9 +347,13 @@ static void update() {
 
 	}
 
+	prof_begin(PROF_UPDATE);
 	if (allowupdate) updateWorld();
+	prof_end(PROF_UPDATE);
 
+	prof_begin(PROF_GC);
 	collectGarbage(); // important
+	prof_end();
 }
 
 struct screen ScrGamePlay = {

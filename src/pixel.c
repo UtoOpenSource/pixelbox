@@ -115,7 +115,6 @@ void updateWorld(void) {
 				if (c->needUpdate) {
 					updateChunk(c);
 					c->wasUpdated = 1;
-					c->wIndex = !c->wIndex;
 					cnt++;
 				};
 				c = c->next;	
@@ -129,6 +128,7 @@ void updateWorld(void) {
 	for (int i = 0; i < MAPLEN; i++) {
 		struct chunk* c = World.Map.data[i];
 		while (c) {
+			if (c->wasUpdated) c->wIndex = !c->wIndex;
 			c->wasUpdated = 0;
 			c = c->next;
 		}

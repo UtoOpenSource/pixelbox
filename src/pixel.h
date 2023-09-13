@@ -36,7 +36,7 @@ struct chunk {
 	int8_t	usagefactor;
 	int8_t	needUpdate, wasUpdated;
 	bool		wIndex; 
-}; // we use dirty assumptions about atomic operations here :(
+};
 
 #define MAPLEN 64 // must be pow of 2!
 

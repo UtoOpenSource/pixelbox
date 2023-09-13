@@ -26,7 +26,7 @@
 
 static bool stat = false;
 static char seed     [64] = {0};
-static char filename [64] = ":memory:";
+static char filename [64] = ":null:";
 static int  mode          = 0;
 static int  input = 0, input2 = 0;
 
@@ -87,10 +87,13 @@ static void draw() {
 
 		if (strcmp(filename, ":memory:") == 0)
 			src = ":memory:";
+		else if (strcmp(filename, ":null:") == 0)
+			goto skip_load;
 		else
 			src = TextFormat("./saves/%s.db", filename);
 		openWorld(src);
 
+skip_load:
 		uint64_t seedr = 0;
 		sscanf(seed, "%li", &seedr);
 		setWorldSeed(seedr);

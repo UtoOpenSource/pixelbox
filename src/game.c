@@ -79,28 +79,37 @@ void GuiAssetTexture(Rectangle rec, AssetID id) {
 void _initAtoms();
 void GuiLoadStyleDark();
 
-#if defined(PLATFORM_WEB)
-    #include <emscripten/emscripten.h>
-#endif
+#include "profiler.h"
 
 static void frame() {
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
 
+		prof_begin(PROF_DRAW);
 		if (SCREEN && SCREEN->draw) SCREEN->draw();
-
 		DrawText("Pixelbox", 0, 0, 10, WHITE);
+		prof_end();
 
+		prof_begin(PROF_UPDATE);
 		if (SCREEN && SCREEN->draw) SCREEN->update();
+		prof_end();
+	
+		prof_begin(PROF_GC);
 		collectAssets();
+		prof_end(); 
+
+		prof_begin(PROF_FINDRAW);
 		EndDrawing();
+		prof_end();
 
 		// screen system
+		prof_begin(PROF_LOAD_INIT);
 		if (CHANGE) {
 			if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 			SCREEN = CHANGE;
 			CHANGE = NULL;
 		}
+		prof_end();
 }
 
 int main() {
@@ -113,16 +122,15 @@ int main() {
 	initAssetSystem();
 
 	SetRootScreen(&ScrMainMenu);
-	//initWorld();
 
-	#if defined(PLATFORM_WEB)
-	emscripten_set_main_loop(frame, 0, 1);
-	#else
 	while (!WindowShouldClose()) { 
+		prof_begin(PROF_GAMETICK);
 		frame();
-	};
-	#endif
+		prof_end();
 
+		prof_step();
+	};
+	
 	// free screen
 	if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 

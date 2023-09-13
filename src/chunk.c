@@ -41,6 +41,8 @@ void generateChunk(struct chunk* c) {
 	}
 }
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 static void generateChunkNormal(struct chunk* c) {
 	uint8_t* data = getChunkData(c, MODE_READ);
 	for (int x = 0; x < CHUNK_WIDTH; x++) {
@@ -49,17 +51,20 @@ static void generateChunkNormal(struct chunk* c) {
 			int ay = (y + (int)c->pos.axis[1]*CHUNK_WIDTH);
 			float v;
 
-			float c = noise2(ax/512.0, ay/512.0);
+			// "cave"
+			float c = noise2(ax/64.0, ay/64.0) + 0.1;
+			c = c * sinf(noise2(ax/128.0, ay/128.0));
+			c = c - MAX(noise2(ax/512.0, ay/512.0), 0.2) 
+				* noise2(ax/2048.0, ay/2048.0);
+
 			v = c;
-			v -= noise2(ax/1024.0, ay/1024.0);
-			if ((v < 0.05 || v > 0.9)) {
+			if (v > 0.1) {
 				c *= 0.5;
 				v = noise2(ax/124.0, ay/124.0) + c;
 				v = v > 1.0 ? v : 1.0 - v;
 				v += 0.02;
 			} else v = 0; 
 			data[x + y * CHUNK_WIDTH] = v*255;
-			//data2[x + y * CHUNK_WIDTH] = randomNumber();
 		}
 	}
 }

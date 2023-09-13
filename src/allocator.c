@@ -29,14 +29,16 @@
 #define ALLOCATOR_DEBUG 1
 
 struct alloc_item {
-	uint16_t magic; // 0x0A0A0AFF
-	uint16_t index;
+	uint16_t magic; // 0x0AFF
+	
+	// index in the array or FREE_INDEX, if item is freed
+	uint16_t index; 
 	struct chunk data;
 };
 
 struct alloc_node {
 	struct alloc_node *next;
-	uint16_t magic; // 0xFF0AFF00
+	uint16_t magic; // 0xFA0A
 	uint16_t count; // count of allocated chunks
 	uint16_t empty; // index of empty slot
 	struct alloc_item items[NODE_LEN];
@@ -47,6 +49,12 @@ static struct alloc_node* node_list = NULL, *node_last = NULL;
 
 #include <assert.h>
 
+/* Why we need a custom allocator here?
+ * Chunks are the most used objects, by design.
+ * They are allocated/freed quite often, and they 
+ * have fixed size. That's why allocation process
+ * NEEDS to be optimized, and can be optimized.
+ */
 static void allocfree() {
 	c89mtx_destroy(&alloc_mutex);
 	struct alloc_node* f = NULL;

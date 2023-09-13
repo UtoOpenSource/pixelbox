@@ -48,9 +48,11 @@ static const char* init_sql =
 "CREATE TABLE IF NOT EXISTS WCHUNKS (id INTEGER PRIMARY KEY, value BLOB);"
 "PRAGMA optimize;";
 
+#include <string.h>
 
 int  openWorld(const char* path) {
 	if (World.database) sqlite3_close_v2(World.database);
+
 	printf("opening %s...\n", path);
 	int stat = sqlite3_open_v2(path, &World.database, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL);
 	if (stat != SQLITE_OK) {
