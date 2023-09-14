@@ -78,12 +78,35 @@ static void destroy() {
 Camera2D cam = {0};
 int color_gradient = -1;
 int color_material = -1;
+static float rainbow_v = 0, rainbow_speed = 5;
+
+static uint8_t b_rainbow() {
+	return rainbow_v;
+}
+
+static uint8_t b_random() {
+	return randomNumber();
+}
+
+static uint8_t b_noise() {
+	return noise1(rainbow_v/128.0) * 255;
+}
+
+static uint8_t getbval(int v) {
+	if (v < 0) switch(v) {
+		case -3 : return b_noise();
+		case -2 : return b_rainbow();
+		case -1 : return b_random();
+		default : break;
+	}
+	return v & 63;
+}
 
 static uint8_t getcolor() {
 	uint8_t color = 0;
-	color = color_material >= 0 ? color_material : randomNumber();
+	color = getbval(color_material);
 	color <<= 2;
-	color |= color_gradient >= 0 ? color_gradient & 3 : randomNumber() & 3;
+	color |= getbval(color_gradient) & 3;
 	return color;
 }
 
@@ -170,6 +193,57 @@ static int window_hidden = 0;
 
 bool GuiColorButton(Rectangle bounds, Color color, const char *text);
 
+static Rectangle getbrec(int i, Rectangle rec) {
+	return (Rectangle){
+		rec.x + 2 + (i % (350/27))*25,
+		rec.y + 2 + (i/(350/27))*25,
+		25, 25
+	};	
+}
+
+static const char* getbtext(int type) {
+	if (type < 0) {
+		switch(type) {
+			case -1: return "RNG";
+			case -2: return "BOW";
+			case -3: return "PER";
+			default: return "?";
+		}
+	} else return TextFormat("%i", (int)type);
+}
+
+static void colorbutton(Rectangle rec, int type) {
+	int v = getbval(type);
+	if (GuiColorButton(rec, 
+				getPixelColor((v << 2)|3), 
+				getbtext(type)
+			)) {
+		color_material = type;
+	};
+	if (type == color_material)
+		DrawRectangleLinesEx(rec, 2, YELLOW);
+}
+
+static Rectangle getgrec(int i, Rectangle rec) {
+	return (Rectangle) {
+		rec.x + 12 + (12+2)*25,
+		rec.y + 2 + (i)*25,
+		25, 25
+	};	
+}
+
+static void gradbutton(Rectangle rec, int type) {
+	int v = getbval(type);
+	if (GuiColorButton(rec, 
+				getPixelColor((getbval(color_material) << 2)|v&3), 
+				getbtext(type)
+			)) {
+		color_gradient = type;
+	};
+	if (type == color_gradient)
+		DrawRectangleLinesEx(rec, 2, GREEN);
+}
+
 static void drawPallete(Rectangle rec) {
 	Rectangle item = (Rectangle){
 		rec.x, rec.y,
@@ -177,15 +251,23 @@ static void drawPallete(Rectangle rec) {
 	};
 
 	for (int i = 0; i < 64; i++) {
-		item = (Rectangle){
-			rec.x + 2 + (i % (350/27))*23,
-			rec.y + 2 + (i/(350/27))*23,
-			25, 25
-		};	
-		if (GuiColorButton(item, getPixelColor((i<<2)|3), "RGB")) {
-			color_material = i;
-		};
+		item = getbrec(i, rec); 
+		colorbutton(item, i);	
 	}
+
+	for (int i = 1; i < 4; i++) {
+		item = getbrec(68+i, rec); 
+		colorbutton(item, 0-i);
+	}
+
+	for (int i = 0; i < 4; i++) {
+		item = getgrec(i, rec);
+		gradbutton(item, i);
+	}
+
+	item = getgrec(5, rec);
+	gradbutton(item, -1);
+
 }
 
 #include "profiler.h"
@@ -222,11 +304,21 @@ static void drawGUI() {
 		20, 20
 	};
 
+	Rectangle recc = (Rectangle) { // color rectangle
+		winrec.x + winrec.width - 40, winrec.y + 2,
+		20, 20
+	};
+
 	int icon_kind = window_hidden ? ICON_ARROW_UP : ICON_ARROW_DOWN;
 
 	if (GuiButton(rec, GuiIconText(icon_kind, ""))) {
 		window_hidden = !window_hidden;
 	}
+
+	GuiColorButton(recc, 
+		getPixelColor((getbval(color_material) << 2)|3),
+		""
+	);
 
 	if (window_hidden) return; // :)
 	
@@ -282,7 +374,14 @@ static void drawGUI() {
 	}
 }
 
+static double old_time = 0.0;
+
 static void update() { 
+	float dt = GetTime() - old_time;
+	old_time = GetTime();
+	rainbow_v += rainbow_speed * dt;
+	if (rainbow_v > 1000) rainbow_v = -1000;
+
 	winrec = (Rectangle){
 		0, GetScreenHeight() - (window_hidden ? 25 : 200),
 		400, (window_hidden ? 25 : 205)

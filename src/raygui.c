@@ -86,9 +86,18 @@ bool GuiColorButton(Rectangle bounds, Color color, const char *text)
     }
     //--------------------------------------------------------------------
 
+		Color color2 = color;
+		if (color2.r >= 30) color2.r -= 30;
+		else color2.r = 0;
+		if (color2.g >= 30) color2.g -= 30;
+		else color2.g = 0;
+		if (color2.b >= 30) color2.b -= 30;
+		else color2.b = 0;
+
     // Draw control
     //--------------------------------------------------------------------
-    GuiDrawRectangle(bounds, GuiGetStyle(BUTTON, BORDER_WIDTH), Fade(GetColor(GuiGetStyle(BUTTON, BORDER + (state*3))), guiAlpha), Fade(color, guiAlpha));
+    GuiDrawRectangle(bounds, GuiGetStyle(BUTTON, BORDER_WIDTH), 
+			Fade(color2, guiAlpha), Fade(color, guiAlpha));
     GuiDrawText(text, GetTextBounds(BUTTON, bounds), GuiGetStyle(BUTTON, TEXT_ALIGNMENT), Fade(GetColor(GuiGetStyle(BUTTON, TEXT + (state*3))), guiAlpha));
 
     if (state == STATE_FOCUSED) GuiTooltip(bounds);

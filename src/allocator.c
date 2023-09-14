@@ -165,6 +165,7 @@ static struct alloc_item* dataToNode(void* p, struct alloc_node** dst) {
 
 	checkimagic(it);
 	uint16_t i = it->index;
+	assert(i != FREE_INDEX && "attempt to double free");
 	assert(i < NODE_LEN); // including FREE_INDEX
 	struct alloc_item* fi = it - i; // first item
 	
@@ -189,9 +190,7 @@ void freeChunk(struct chunk* orig) {
 	if (!orig) return;
 	c89mtx_lock(&alloc_mutex);
 
-	if (orig == &empty) {
-		((char*)NULL)[32] = 1; // crash
-	}
+	assert(orig != &empty);
 
 	struct alloc_node* n = NULL;
 	struct alloc_item* it = dataToNode((void*)orig, &n);

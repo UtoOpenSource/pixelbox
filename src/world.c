@@ -28,6 +28,9 @@ int initWorld(void) {
 	World.database = NULL;
 	setWorldSeed(time(NULL));
 	memset(&World.map, 0, sizeof(World.map));
+	memset(&World.load, 0, sizeof(World.load));
+	memset(&World.save, 0, sizeof(World.save));
+	memset(&World.update, 0, sizeof(World.update));
 	World.map.g = true; // IMPORTANT!
 	return 0;
 }
