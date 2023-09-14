@@ -205,7 +205,7 @@ static const char* getbtext(int type) {
 	if (type < 0) {
 		switch(type) {
 			case -1: return "RNG";
-			case -2: return "BOW";
+			case -2: return "RAI";
 			case -3: return "PER";
 			default: return "?";
 		}
@@ -215,7 +215,7 @@ static const char* getbtext(int type) {
 static void colorbutton(Rectangle rec, int type) {
 	int v = getbval(type);
 	if (GuiColorButton(rec, 
-				getPixelColor((v << 2)|3), 
+				getPixelColor((v << 2)|2), 
 				getbtext(type)
 			)) {
 		color_material = type;
@@ -232,10 +232,15 @@ static Rectangle getgrec(int i, Rectangle rec) {
 	};	
 }
 
+static uint8_t bnorm(int v) {
+	if (v < 0) return 0;
+	return v;
+}
+
 static void gradbutton(Rectangle rec, int type) {
 	int v = getbval(type);
 	if (GuiColorButton(rec, 
-				getPixelColor((getbval(color_material) << 2)|v&3), 
+				getPixelColor((bnorm(color_material) << 2)|(v&3)), 
 				getbtext(type)
 			)) {
 		color_gradient = type;
