@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "profiler.h"
 
 static int refcnt = 0;
 
@@ -46,6 +47,7 @@ static void create() {
 	ptime_old = GetTime();
 
 	int64_t v;
+	prof_begin(PROF_DISK); 
 	if (loadProperty("zoom", &v)) {
 		cam.zoom = v / 7000.0;
 		if (cam.zoom < 0.5) cam.zoom = 0.5;
@@ -57,6 +59,7 @@ static void create() {
 		cam.target = (Vector2){x/5.0, y/5.0};
 	} else cam.target = (Vector2){120/2, 120/2};
 	cam.offset = (Vector2){GetScreenWidth()/2, GetScreenHeight()/2};
+	prof_end();
 }
 
 static void destroy() {
@@ -142,6 +145,7 @@ static void draw() {
 	cam.offset = (Vector2){GetScreenWidth()/2, GetScreenHeight()/2};	
 	BeginMode2D(cam); // draw world
 
+	prof_begin(PROF_DRAWWORLD);
 	int32_t x0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).x)/ CHUNK_WIDTH - 1;
 	int32_t x1 = (GetScreenToWorld2D((Vector2){GetScreenWidth(), 0}, cam).x) / CHUNK_WIDTH + 1;
 	int32_t y0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).y) / CHUNK_WIDTH - 1;
@@ -165,6 +169,7 @@ static void draw() {
 		}
 	}
 	flushChunksCache();
+	prof_end();
 
 	Vector2 mousepos = GetScreenToWorld2D(GetMousePosition(), cam);
 
@@ -275,7 +280,6 @@ static void drawPallete(Rectangle rec) {
 
 }
 
-#include "profiler.h"
 
 void drawProfiler(Rectangle rec);
 
@@ -431,7 +435,9 @@ static void update() {
 	if (allowupdate) updateWorld();
 	prof_end(PROF_UPDATE);
 
+	prof_begin(PROF_LOAD_SAVE);
 	saveloadTick(); // done in
+	prof_end();
 
 	prof_begin(PROF_GC);
 	collectGarbage(); // important

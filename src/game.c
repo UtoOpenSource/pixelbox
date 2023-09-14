@@ -105,7 +105,7 @@ static void frame(bool should_close) {
 		prof_end();
 
 		// screen system
-		prof_begin(PROF_LOAD_INIT);
+		prof_begin(PROF_INIT_FREE);
 		if (CHANGE) {
 			if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 			SCREEN = CHANGE;
@@ -129,7 +129,7 @@ Color getPixelColor(uint8_t val) {
 }
 
 int main() {
-	prof_begin(PROF_LOAD_INIT);
+	prof_begin(PROF_INIT_FREE);
 	_initAtoms();
 	SetTraceLogLevel(LOG_DEBUG);
 	SetConfigFlags(FLAG_VSYNC_HINT);

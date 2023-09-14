@@ -20,12 +20,14 @@
 
 const char* prof_entries_names[] = {
 	"game_tick",
+	"inif/free",
 	"draw",
+	"draw_world",
 	"draw_fin",
 	"update",
 	"physics",
 	"g_collection",
-	"load/init",
+	"saveload",
 	"worldgen",
 	"disk IO",
 	"error"

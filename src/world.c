@@ -37,7 +37,10 @@ int initWorld(void) {
 
 #include "profiler.h"
 
+void flushChunks();
+
 void flushWorld (void) {
+	prof_begin(PROF_DISK);
 	saveProperty("seed", World.seed);
 	saveProperty("mode", World.mode);
 	saveProperty("playtime", World.playtime);
@@ -53,12 +56,14 @@ void flushWorld (void) {
 		World.load.data[i] = NULL;
 	}
 
-	while (saveloadTick()) {} // hell yeah
+	flushChunks(); // save all chunks in the World.map hashmap
+	while (saveloadTick()) {} // and from World.save hashmap
+	prof_end();
 }
 
 void freeWorld(void) {
-	collectAnything();
-	flushWorld();
+	collectAnything(); // cleans up World.map to World.save
+	flushWorld(); // flushChunks() is not called there, btw
 
 	prof_begin(PROF_DISK);
 	if (World.database) sqlite3_close_v2(World.database);
@@ -157,7 +162,7 @@ static struct chunk* slow_loading_path(int16_t x, int16_t y) {
 	if (c) {
 		c->usagefactor = CHUNK_USAGE_VALUE;
 		removeChunk(&World.save, c); // important!
-		insertChunk(&World.map, c); // prevent from being freed!
+		insertChunk(&World.map, c); 
 		return c;
 	}
 

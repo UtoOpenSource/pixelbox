@@ -29,6 +29,8 @@ static int save_i = 0;
 #define SCORE_LOAD 1
 #define SCORE_MAX  5
 
+#include <assert.h>
+
 bool saveloadTick() {
 	bool done_something = false;
 	struct chunkmap* m = &World.load;
@@ -71,7 +73,8 @@ bool saveloadTick() {
 			if (c->is_changed) saveChunk(c);
 
 			// free in that case!
-			if (!findChunk(&World.map, c->pos.axis[0], c->pos.axis[1])) {
+			assert(!findChunk(&World.map, c->pos.axis[0], c->pos.axis[1]));
+			{
 				freeChunk(c);
 			}
 
@@ -96,20 +99,33 @@ void addLoadQueue(struct chunk* c) {
 	insertChunk(&World.load, c);
 }
 
-#include "profiler.h"
+// we CAN'T just add all chunks there to save queue
+// (cause they may be in update queue already)
+// so, we will do direct approach there :p
+void flushChunks() {
+	struct chunkmap* m = &World.map;
+	for (int i = 0; i < MAPLEN; i++) {
+		struct chunk* c = m->data[i];
+		while (c) {
+			// don't save unchanged chunks
+			if (c->is_changed) saveChunk(c);
+			c->is_changed = 0; // 'cause yeah
+			c = c->next;
+		}
+	}
+}
 
 // SQLITE PART IS HERE NOW! :З
 // but initialization is still in the world.c :/
 #include <sqlite3.h>
 
+
 int  loadChunk(struct chunk* c) {
 	if (World.database) {
-		prof_begin(PROF_DISK);
 		bool loaded = false;
 		sqlite3_stmt* stmt = create_statement(
 				"SELECT value FROM WCHUNKS WHERE id = ?1;");
 		if (!stmt) {
-			prof_end();
 			return -2;
 		}
 		sqlite3_bind_int64(stmt, 1, c->pos.pack);
@@ -121,7 +137,6 @@ int  loadChunk(struct chunk* c) {
 			}
 		}
 		sqlite3_finalize(stmt);
-		prof_end();
 		return loaded;
 	}
 	return -1;
@@ -129,18 +144,15 @@ int  loadChunk(struct chunk* c) {
 
 void saveChunk(struct chunk* c) {
 	if (World.database) {
-		prof_begin(PROF_DISK);
 sqlite3_stmt* stmt = create_statement(
 				"INSERT OR REPLACE INTO WCHUNKS VALUES(?1, ?2);");
 		if (!stmt) {
-			prof_end();
 			return;
 		}
 		sqlite3_bind_int64(stmt, 1, c->pos.pack);
 		sqlite3_bind_blob(stmt, 2, getChunkData(c, MODE_READ), CHUNK_WIDTH*CHUNK_WIDTH, SQLITE_STATIC);
 		while (statement_iterator(stmt) > 0) {}
 		sqlite3_finalize(stmt);
-		prof_end();
 	}
 }
 
@@ -193,12 +205,8 @@ bool saveProperty(const char* k, int64_t v) {
 sqlite3_stmt* create_statement(const char* sql) {
 	sqlite3_stmt* ptr;
 
-	prof_begin(PROF_LOAD_INIT);
-
 	int err	= sqlite3_prepare_v3(World.database, sql, -1, 0,
 		&ptr, (const char**)0);
-
-	prof_end();
 
 	if (err != SQLITE_OK) {
 		perror(sqlite3_errmsg(World.database));
