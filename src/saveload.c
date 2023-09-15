@@ -30,6 +30,180 @@ static int save_i = 0;
 #define SCORE_MAX  5
 
 #include <assert.h>
+// SQLITE PART IS HERE NOW! :З
+#include <sqlite3.h>
+
+static const char* init_sql = 
+"PRAGMA cache_size = -16000;"
+"PRAGMA journal_mode = MEMORY;"
+"PRAGMA synchronous = 0;" // TODO : may be 1 ok?
+"PRAGMA auto_vacuum = 0;"
+"PRAGMA secure_delete = 0;"
+"PRAGMA temp_store = MEMORY;"
+"PRAGMA page_size = 32768;"
+"PRAGMA integrity_check;"
+"CREATE TABLE IF NOT EXISTS PROPERTIES (key STRING PRIMARY KEY, value);" 
+"CREATE TABLE IF NOT EXISTS WCHUNKS (id INTEGER PRIMARY KEY, value BLOB);"
+;
+
+static const char* free_sql = 
+"VACUUM;"
+"PRAGMA optimize;";
+
+void initSaveLoad(const char* path) {
+if (World.database) sqlite3_close_v2(World.database);
+	int stat = sqlite3_open_v2(
+		path, &World.database,
+		SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL
+	);
+	if (stat != SQLITE_OK) {
+		perror("Can't open database!");
+		return;
+	}
+	const char* msg = "no error";
+	if (sqlite3_exec(World.database, init_sql, NULL, NULL, &msg) != SQLITE_OK) {
+		perror("Can't init database!");
+		perror(msg);
+	};
+}
+
+void freeSaveLoad() {
+	const char* msg = "no error";
+	if (!World.database) return; // exit
+	if (sqlite3_exec(World.database, free_sql, NULL, NULL, &msg) != SQLITE_OK) {
+		perror("Can't finalize database properly!");
+		perror(msg);
+	};
+	if (World.database) sqlite3_close_v2(World.database);
+}
+
+void flushSaveLoad() {
+
+}
+
+int  loadChunk(struct chunk* c) {
+	if (World.database) {
+		bool loaded = false;
+		sqlite3_stmt* stmt = create_statement(
+				"SELECT value FROM WCHUNKS WHERE id = ?1;");
+		if (!stmt) {
+			return -2;
+		}
+		sqlite3_bind_int64(stmt, 1, c->pos.pack);
+		while (statement_iterator(stmt) > 0) {
+			const uint8_t* data = (uint8_t*)sqlite3_column_blob(stmt, 0);
+			if (data) {
+				memcpy(getChunkData(c, false), data, CHUNK_WIDTH*CHUNK_WIDTH);
+				loaded = true;
+			}
+		}
+		sqlite3_finalize(stmt);
+		return loaded;
+	}
+	return -1;
+}
+
+void saveChunk(struct chunk* c) {
+	if (World.database) {
+sqlite3_stmt* stmt = create_statement(
+				"INSERT OR REPLACE INTO WCHUNKS VALUES(?1, ?2);");
+		if (!stmt) {
+			return;
+		}
+		sqlite3_bind_int64(stmt, 1, c->pos.pack);
+		sqlite3_bind_blob(stmt, 2, getChunkData(c, MODE_READ), CHUNK_WIDTH*CHUNK_WIDTH, SQLITE_STATIC);
+		while (statement_iterator(stmt) > 0) {}
+		sqlite3_finalize(stmt);
+	}
+}
+
+static bool getprop(const char* name, int64_t *out) {
+	if (World.database) {
+		bool loaded = false;
+		sqlite3_stmt* stmt = create_statement(
+				"SELECT value FROM PROPERTIES WHERE key = ?1;");
+		if (!stmt) {
+			perror(sqlite3_errmsg(World.database));
+			return false;
+		}
+		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+		while (statement_iterator(stmt) > 0) {
+			*out = sqlite3_column_int64(stmt, 0);
+			loaded = true;
+		}
+		sqlite3_finalize(stmt);
+		return loaded;
+	}
+	return false;
+}
+
+bool loadProperty(const char* k, int64_t *v) {
+	return getprop(k, v);
+}
+
+static bool setprop(const char* name, int64_t v) {
+	if (World.database) {
+		sqlite3_stmt* stmt = create_statement(
+				"INSERT OR REPLACE INTO PROPERTIES VALUES(?1, ?2);");
+		if (!stmt) {
+			perror(sqlite3_errmsg(World.database));
+			return false;
+		}
+		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt, 2, v);
+		while (statement_iterator(stmt) > 0) {}
+		sqlite3_finalize(stmt);
+		return true;
+	}
+	return false;
+}
+
+bool saveProperty(const char* k, int64_t v) {
+	return setprop(k, v);
+}
+
+sqlite3_stmt* create_statement(const char* sql) {
+	sqlite3_stmt* ptr;
+
+	int err	= sqlite3_prepare_v3(World.database, sql, -1, 0,
+		&ptr, (const char**)0);
+
+	if (err != SQLITE_OK) {
+		perror(sqlite3_errmsg(World.database));
+		return NULL;
+	}
+	return ptr;
+}
+
+
+// returns 1 if there is still data to process
+// returns 0 if statement completed successfully
+// returns -1 if error occured
+int statement_iterator(sqlite3_stmt* stmt) {
+
+	int attemts = 0, res = 0;
+	retry :
+	res = sqlite3_step(stmt);
+	if (res == SQLITE_BUSY) {
+		attemts++;
+		if (attemts < 100) goto retry;
+	}
+	if (res == SQLITE_DONE) {
+		// DONE
+	}
+	int stat;
+	if (res == SQLITE_DONE) stat = 0;
+	else if (res == SQLITE_ROW) stat = 1;
+	else {
+		stat = -1;
+		perror(sqlite3_errstr(res));
+		perror(sqlite3_errmsg(World.database));
+	}
+	if (stat < 1) sqlite3_reset(stmt);
+
+	return stat;
+}
+
 
 bool saveloadTick() {
 	bool done_something = false;
@@ -118,131 +292,4 @@ void flushChunks() {
 	}
 }
 
-// SQLITE PART IS HERE NOW! :З
-// but initialization is still in the world.c :/
-#include <sqlite3.h>
 
-
-int  loadChunk(struct chunk* c) {
-	if (World.database) {
-		bool loaded = false;
-		sqlite3_stmt* stmt = create_statement(
-				"SELECT value FROM WCHUNKS WHERE id = ?1;");
-		if (!stmt) {
-			return -2;
-		}
-		sqlite3_bind_int64(stmt, 1, c->pos.pack);
-		while (statement_iterator(stmt) > 0) {
-			const uint8_t* data = (uint8_t*)sqlite3_column_blob(stmt, 0);
-			if (data) {
-				memcpy(getChunkData(c, false), data, CHUNK_WIDTH*CHUNK_WIDTH);
-				loaded = true;
-			}
-		}
-		sqlite3_finalize(stmt);
-		return loaded;
-	}
-	return -1;
-}
-
-void saveChunk(struct chunk* c) {
-	if (World.database) {
-sqlite3_stmt* stmt = create_statement(
-				"INSERT OR REPLACE INTO WCHUNKS VALUES(?1, ?2);");
-		if (!stmt) {
-			return;
-		}
-		sqlite3_bind_int64(stmt, 1, c->pos.pack);
-		sqlite3_bind_blob(stmt, 2, getChunkData(c, MODE_READ), CHUNK_WIDTH*CHUNK_WIDTH, SQLITE_STATIC);
-		while (statement_iterator(stmt) > 0) {}
-		sqlite3_finalize(stmt);
-	}
-}
-
-static bool getprop(const char* name, int64_t *out) {
-	if (World.database) {
-		bool loaded = false;
-		sqlite3_stmt* stmt = create_statement(
-				"SELECT value FROM PROPERTIES WHERE key = ?1;");
-		if (!stmt) {
-			perror(sqlite3_errmsg(World.database));
-			return false;
-		}
-		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
-		while (statement_iterator(stmt) > 0) {
-			*out = sqlite3_column_int64(stmt, 0);
-			loaded = true;
-		}
-		sqlite3_finalize(stmt);
-		return loaded;
-	}
-	return false;
-}
-
-bool loadProperty(const char* k, int64_t *v) {
-	return getprop(k, v);
-}
-
-static bool setprop(const char* name, int64_t v) {
-	if (World.database) {
-		sqlite3_stmt* stmt = create_statement(
-				"INSERT OR REPLACE INTO PROPERTIES VALUES(?1, ?2);");
-		if (!stmt) {
-			perror(sqlite3_errmsg(World.database));
-			return false;
-		}
-		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt, 2, v);
-		while (statement_iterator(stmt) > 0) {}
-		sqlite3_finalize(stmt);
-		return true;
-	}
-	fprintf(stderr, "property saving failture!");
-	return false;
-}
-
-bool saveProperty(const char* k, int64_t v) {
-	return setprop(k, v);
-}
-
-sqlite3_stmt* create_statement(const char* sql) {
-	sqlite3_stmt* ptr;
-
-	int err	= sqlite3_prepare_v3(World.database, sql, -1, 0,
-		&ptr, (const char**)0);
-
-	if (err != SQLITE_OK) {
-		perror(sqlite3_errmsg(World.database));
-		return NULL;
-	}
-	return ptr;
-}
-
-
-// returns 1 if there is still data to process
-// returns 0 if statement completed successfully
-// returns -1 if error occured
-int statement_iterator(sqlite3_stmt* stmt) {
-
-	int attemts = 0, res = 0;
-	retry :
-	res = sqlite3_step(stmt);
-	if (res == SQLITE_BUSY) {
-		attemts++;
-		if (attemts < 100) goto retry;
-	}
-	if (res == SQLITE_DONE) {
-		// DONE
-	}
-	int stat;
-	if (res == SQLITE_DONE) stat = 0;
-	else if (res == SQLITE_ROW) stat = 1;
-	else {
-		stat = -1;
-		perror(sqlite3_errstr(res));
-		perror(sqlite3_errmsg(World.database));
-	}
-	if (stat < 1) sqlite3_reset(stmt);
-
-	return stat;
-}

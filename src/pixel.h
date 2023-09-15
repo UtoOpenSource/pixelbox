@@ -33,7 +33,7 @@ struct chunk {
 	struct chunk *next, *next2; // next2 for minimap!
 	union packpos pos;
 	uint8_t	atoms[CHUNK_WIDTH*CHUNK_WIDTH*2];
-	int8_t	usagefactor;
+	int8_t	usagefactor; // GC
 	int8_t	wasUpdated : 1;
 	int8_t  is_changed : 1;
 	bool		wIndex; 

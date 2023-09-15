@@ -100,7 +100,6 @@ skip_load:
 		setWorldSeed(seedr);
 
 		World.mode = mode;
-		perror("OK");
 
 		SetRootScreen(&ScrGamePlay);
 	}

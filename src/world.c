@@ -38,6 +38,7 @@ int initWorld(void) {
 #include "profiler.h"
 
 void flushChunks();
+void flushSaveLoad();
 
 void flushWorld (void) {
 	prof_begin(PROF_DISK);
@@ -58,45 +59,27 @@ void flushWorld (void) {
 
 	flushChunks(); // save all chunks in the World.map hashmap
 	while (saveloadTick()) {} // and from World.save hashmap
+	flushSaveLoad(); // flush to original file
 	prof_end();
 }
+
+void initSaveLoad(const char* path);
+void freeSaveLoad();
 
 void freeWorld(void) {
 	collectAnything(); // cleans up World.map to World.save
 	flushWorld(); // flushChunks() is not called there, btw
 
 	prof_begin(PROF_DISK);
-	if (World.database) sqlite3_close_v2(World.database);
+	freeSaveLoad();
 	prof_end();
 }
 
-static const char* init_sql = 
-"PRAGMA cache_size = -16000;"
-"PRAGMA journal_mode = MEMORY;"
-"PRAGMA auto_vacuum = 2;"
-"PRAGMA secure_delete = 0;"
-"PRAGMA temp_store = MEMORY;"
-"PRAGMA page_size = 32768;"
-"CREATE TABLE IF NOT EXISTS PROPERTIES (key STRING PRIMARY KEY, value);" 
-"CREATE TABLE IF NOT EXISTS WCHUNKS (id INTEGER PRIMARY KEY, value BLOB);"
-"PRAGMA optimize;";
 
 #include <string.h>
 
 int  openWorld(const char* path) {
-	if (World.database) sqlite3_close_v2(World.database);
-
-	printf("opening %s...\n", path);
-	int stat = sqlite3_open_v2(path, &World.database, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL);
-	if (stat != SQLITE_OK) {
-		perror("Can't open database!");
-		return -1;
-	}
-	const char* msg = "no error";
-	if (sqlite3_exec(World.database, init_sql, NULL, NULL, &msg) != SQLITE_OK) {
-		perror("Can't init database!");
-		perror(msg);
-	};
+	initSaveLoad(path);
 	int64_t v = 0;
 	if (loadProperty("seed", &v)) setWorldSeed(v);
 	if (loadProperty("mode", &v)) World.mode = v;
@@ -152,9 +135,11 @@ static struct chunk* slow_loading_path(int16_t x, int16_t y) {
 	struct chunk* c;
 
 	// if still loading...
-	if (findChunk(&World.load, x, y)) {
+	c = findChunk(&World.load, x, y);
+	if (c) {
 		empty.pos.axis[0] = x;
 		empty.pos.axis[1] = y;
+		c->usagefactor = CHUNK_USAGE_VALUE; // 'cause GC will work on loaded chunks
 		return &empty;
 	}
 
@@ -169,6 +154,7 @@ static struct chunk* slow_loading_path(int16_t x, int16_t y) {
 
 	// wait new chunk to be loaded...
 	c = allocChunk(x, y);
+	c->usagefactor = CHUNK_USAGE_VALUE;
 	addLoadQueue(c); // RETURN NULL!!!
 	empty.pos.axis[0] = x;
 	empty.pos.axis[1] = y;
