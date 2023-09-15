@@ -24,8 +24,6 @@ void flushChunksCache();
 int  renderChunk(struct chunk* c);
 
 extern Camera2D cam;
-extern int color_gradient;
-extern int color_material;
 
 struct screen {
 	struct screen* back;

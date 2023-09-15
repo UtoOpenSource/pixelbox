@@ -64,6 +64,9 @@ extern struct worldState {
 	uint64_t playtime;
 	
 	struct sqlite3* database; 
+
+	// flags
+	bool is_update_enabled;
 } World;
 
 // PUBLIC INTERFACE

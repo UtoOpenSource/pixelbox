@@ -89,8 +89,11 @@ bool saveloadTick() {
 }
 
 void addSaveQueue(struct chunk* c) {
-	if (!findChunk(&World.save, c->pos.axis[0], c->pos.axis[1]))
-		insertChunk(&World.save, c);
+	if (findChunk(&World.save, c->pos.axis[0], c->pos.axis[1])) return;
+	if (findChunk(&World.update, 	c->pos.axis[0], c->pos.axis[1])) {
+		removeChunk(&World.update, c); // important
+	}
+	insertChunk(&World.save, c);
 }
 
 void addLoadQueue(struct chunk* c) {

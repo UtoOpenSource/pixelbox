@@ -119,12 +119,12 @@ static void frame(bool should_close) {
 }
 
 Color getPixelColor(uint8_t val) {
-	int kind = (val & 3)*2/3;
+	float kind = (val & 3)/6.0;
 	int type = (val >> 2) & 63;
 	float r  = (type & 3) + kind;
 	float g  = ((type >> 2) & 3) + kind;
 	float b  = ((type >> 4) & 3) + kind;
-	Color color = {r/5.0*255, g/5.0*255, b/5.0*255, 255};
+	Color color = {r/4.0*255, g/4.0*255, b/4.0*255, 255};
 	return color;
 }
 

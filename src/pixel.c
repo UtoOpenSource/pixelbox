@@ -100,6 +100,14 @@ bool updateChunk(struct chunk* c) {
 
 #include <string.h>
 void updateWorld(void) {
+	if (!World.is_update_enabled) { // yeah
+		// cleanup map
+		for (int i = 0; i < MAPLEN; i++) {
+			World.update.data[i] = NULL; // hehehe
+		}
+		return;
+	}
+
 	int cnt = 0;
 
 	while (true) {

@@ -109,6 +109,7 @@ void setWorldPixel(int64_t x, int64_t y, uint8_t val, bool mode) {
 	int64_t cy = (uint64_t)y/CHUNK_WIDTH;
 	struct chunk* ch;
 	ch = getWorldChunk(cx, cy);
+	if (ch == &empty) return;
 	int ax = (uint64_t)x%CHUNK_WIDTH;
 	int ay = (uint64_t)y%CHUNK_WIDTH;
 	ch->is_changed = 1; // yeah...

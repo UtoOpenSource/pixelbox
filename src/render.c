@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define BUILDERWIDTH 16
+#define BUILDERWIDTH 32
 struct {
 	Shader   shader;
 	bool texidx;
@@ -45,12 +45,12 @@ out vec4 finalColor; \n\
 \n\
 vec4 effect(vec4 color, sampler2D tex, vec2 texture_coords) {\n\
 	int val = int(texture(tex, texture_coords).r*255.1);\n\
-	float kind = float(val & 3)*2/3;\n\
+	float kind = float(val & 3)/6.0;\n\
 	int type = (val >> 2) & 63;\n\
 	float r  = float(type & 3) + kind;\n\
 	float g  = float((type >> 2) & 3) + kind;\n\
 	float b  = float((type >> 4) & 3) + kind;\n\
-	return vec4(r/5.0, g/5.0, b/5.0, 1);\n\
+	return vec4(r/4.0, g/4.0, b/4.0, 1);\n\
 }\n\
 \n\
 void main() {\n\
