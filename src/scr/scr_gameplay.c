@@ -89,34 +89,14 @@ void setline (int x0, int y0, int x1, int y1);
 bool updateToolkit();
 void drawToolkit();
 
+#include "implix.h"
+
 static void draw() {
 	cam.offset = (Vector2){GetScreenWidth()/2, GetScreenHeight()/2};	
 	BeginMode2D(cam); // draw world
 
 	prof_begin(PROF_DRAWWORLD);
-	int32_t x0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).x)/ CHUNK_WIDTH - 1;
-	int32_t x1 = (GetScreenToWorld2D((Vector2){GetScreenWidth(), 0}, cam).x) / CHUNK_WIDTH + 1;
-	int32_t y0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).y) / CHUNK_WIDTH - 1;
-	int32_t y1 = (GetScreenToWorld2D((Vector2){0, GetScreenHeight()}, cam).y) / CHUNK_WIDTH + 1;
-
-	int i = 0;
-	for (int32_t y = y0; y < y1; y++) {
-		for (int32_t x = x0; x < x1; x++) {
-			struct chunk* c = getWorldChunk(x, y);
-			
-			if (c == &empty) {
-				float rx = ((int32_t)c->pos.axis[0]) * CHUNK_WIDTH;
-				float ry = ((int32_t)c->pos.axis[1]) * CHUNK_WIDTH;
-				DrawRectangleRec(
-					(Rectangle){rx, ry, CHUNK_WIDTH, CHUNK_WIDTH},
-					getPixelColor(softGenerate(x, y))
-				);
-				continue;
-			} else renderChunk(c);
-			i++;
-		}
-	}
-	flushChunksCache();
+	updateRender(cam);
 	prof_end();
 
 	Vector2 mousepos = GetScreenToWorld2D(GetMousePosition(), cam);

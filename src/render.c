@@ -18,17 +18,9 @@
 
 #include <raylib.h>
 #include "pixel.h"
+#include "implix.h"
 #include <stdlib.h>
 #include <stdio.h>
-
-#define BUILDERWIDTH 32
-struct {
-	Shader   shader;
-	bool texidx;
-	Texture textures[2];
-	float positions[BUILDERWIDTH*BUILDERWIDTH*2];
-	uint16_t iteration;
-} Builder;
 
 static const char* fragment =
 #ifdef PLATFORM_WEB
@@ -80,7 +72,22 @@ NULL
 #endif
 ;
 
-static char unused[CHUNK_WIDTH*BUILDERWIDTH*CHUNK_WIDTH*BUILDERWIDTH];
+#define BUILDERWIDTH 32
+#define RENDER_MAX   BUILDERWIDTH*BUILDERWIDTH
+
+struct gitem { // graphical item (chunk)
+	union packpos pos;
+	bool used;
+};
+
+struct {
+	Shader  shader;
+	Texture texture;
+	struct gitem items[RENDER_MAX];
+	uint16_t freeitem; // index of free item
+} Builder;
+
+static char unused[CHUNK_WIDTH*BUILDERWIDTH*CHUNK_WIDTH*BUILDERWIDTH] = {0};
 
 void initBuilder() {
 	Image img  = {0};
@@ -89,26 +96,26 @@ void initBuilder() {
 	img.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
 	img.width  = CHUNK_WIDTH*BUILDERWIDTH;
 	img.height = CHUNK_WIDTH*BUILDERWIDTH;
-	Builder.textures[0] = LoadTextureFromImage(img);
-	Builder.textures[1] = LoadTextureFromImage(img);
-	if (!IsTextureReady(Builder.textures[0])) {
+	Builder.texture = LoadTextureFromImage(img);
+
+	if (!IsTextureReady(Builder.texture)) {
 		perror("Can't make texture for TextureBuilder! Aborting...");
 		abort();
 	}
+
 	Builder.shader = LoadShaderFromMemory(vertex, fragment);
 	if (!IsShaderReady(Builder.shader)) abort();
-	Builder.iteration = 0;
-	Builder.texidx = true;
-	SetTextureFilter(Builder.textures[0], TEXTURE_FILTER_POINT);
-	SetTextureFilter(Builder.textures[1], TEXTURE_FILTER_POINT);
+	SetTextureFilter(Builder.texture, TEXTURE_FILTER_POINT);
 }
 
 void freeBuilder() {
-	UnloadTexture(Builder.textures[0]);
-	UnloadTexture(Builder.textures[1]);
+	UnloadTexture(Builder.texture);
 	UnloadShader(Builder.shader);
+	for (int i = 0; i < RENDER_MAX; i++) 
+		Builder.items[i].used = false;
 }
 
+/*
 void flushChunksCache() {
 	BeginShaderMode(Builder.shader);
 	for (int pos = 0; pos < Builder.iteration; pos++) {
@@ -121,8 +128,10 @@ void flushChunksCache() {
 	Builder.iteration = 0;
 	Builder.texidx = !Builder.texidx;
 	EndShaderMode();
-}
+} */
 
+
+/*
 int  renderChunk(struct chunk* c) {
 	if (!c) return -1;
 	Builder.positions[Builder.iteration * 2] =
@@ -138,5 +147,142 @@ int  renderChunk(struct chunk* c) {
 			flushChunksCache();
 	}
 	return 0;
+} */
+
+static bool collides(struct gitem* o, int32_t x, int32_t y, int32_t x2, int32_t y2) {
+	return (
+		(int32_t)o->pos.axis[0] <= x2 &&
+    (int32_t)o->pos.axis[0] >= x  &&
+    (int32_t)o->pos.axis[1] <= y2 &&
+    (int32_t)o->pos.axis[1] >= y
+	);
 }
+
+#include "game.h"
+
+void debugRender(Rectangle rec) {
+	for (int i = 0; i < RENDER_MAX; i++) {
+			int x = i % BUILDERWIDTH;
+			int y = i / BUILDERWIDTH;
+			struct gitem* o = Builder.items + i;
+			DrawPixel(rec.x + x, rec.y + y, o->used ? (GREEN) : GRAY);
+	}
+
+	int x = Builder.freeitem % BUILDERWIDTH;
+	int y = Builder.freeitem / BUILDERWIDTH;
+	DrawPixel(rec.x + x, rec.y + y, YELLOW);
+}
+
+static void updateData(int index, struct chunk* c) {
+	int x = index % BUILDERWIDTH;
+	int y = index / BUILDERWIDTH;
+	UpdateTextureRec(
+		Builder.texture,
+		(Rectangle) {
+			x * CHUNK_WIDTH,
+			y*CHUNK_WIDTH,
+			CHUNK_WIDTH, CHUNK_WIDTH
+		},
+		getChunkData(c, MODE_READ)
+	);
+}
+
+static struct gitem* getItem(struct chunk* c) {
+	if (c == &empty) return NULL;
+
+	union packpos pos = c->pos;
+	struct gitem* o = NULL;
+
+	for (int i = 0; i < RENDER_MAX; i++) {
+		if (Builder.items[i].pos.pack == pos.pack) {
+			o = Builder.items + i;
+			if (!o->used) o->used = 1;
+			if (c->is_changed) {
+				updateData(i, c);
+			}
+			return o;
+		}
+	}
+
+	retry:
+	if (Builder.freeitem >= RENDER_MAX) return NULL;
+	if (Builder.items[Builder.freeitem].used) {
+		Builder.freeitem++; goto retry;
+	}
+	Builder.items[Builder.freeitem].used = true;
+	updateData(Builder.freeitem, c);
+	Builder.items[Builder.freeitem].pos.pack = c->pos.pack;
+	//fprintf(stderr, "added %i\n", c->pos.pack);
+	return Builder.items + (Builder.freeitem++);
+}
+
+#define swap(a, b) {do {int t = a; a = b; b = t;} while(0);}
+
+void updateRender(Camera2D cam) {
+	
+	// get rectangle
+	int64_t x0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).x)/ CHUNK_WIDTH - 1;
+	int64_t x1 = (GetScreenToWorld2D((Vector2){GetScreenWidth(), 0}, cam).x) / CHUNK_WIDTH;
+	int64_t y0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).y) / CHUNK_WIDTH - 1;
+	int64_t y1 = (GetScreenToWorld2D((Vector2){0, GetScreenHeight()}, cam).y) / CHUNK_WIDTH;
+	if (x1 < x0) swap(x1, x0);
+	if (y1 < y0) swap(y1, y0);
+
+	// collect garbage :З
+	for (int i = 0; i < RENDER_MAX; i++) {
+		struct gitem *o = Builder.items + i;
+		if (!o->used) continue;
+		if (!collides(o, x0, y0, x1, y1)) {
+			o->used = false;
+			fprintf(stderr, "collected %i\n", o->pos.pack);
+			if (i < Builder.freeitem) Builder.freeitem = i;
+		}
+	}
+
+	// add chunks in visible range
+	for (int64_t y = y0; y <= y1; y++) {
+		for (int64_t x = x0; x <= x1; x++) {
+			struct chunk* c = getWorldChunk(x, y);
+			struct gitem* o = getItem(c);
+			
+			float rx = ((int32_t)c->pos.axis[0]) * CHUNK_WIDTH;
+			float ry = ((int32_t)c->pos.axis[1]) * CHUNK_WIDTH;
+
+			if (!o) {
+				DrawRectangleRec(
+					(Rectangle){rx, ry, CHUNK_WIDTH, CHUNK_WIDTH},
+					getPixelColor(softGenerate(x, y))
+				);
+				continue;
+			} 
+
+			// else if this is valid chunk... do nothing
+		}
+	}
+
+	BeginShaderMode(Builder.shader);
+	for (int i = 0; i < RENDER_MAX; i++) {
+			int x = i % BUILDERWIDTH;
+			int y = i / BUILDERWIDTH;
+			struct gitem* o = Builder.items + i;
+
+			if (!o->used) continue;
+
+			DrawTextureRec(
+				Builder.texture,
+				(Rectangle) {
+					x*CHUNK_WIDTH,
+					y*CHUNK_WIDTH,
+					CHUNK_WIDTH,
+					CHUNK_WIDTH
+				}, 
+				(Vector2) {
+					o->pos.axis[0] * CHUNK_WIDTH,
+					o->pos.axis[1] * CHUNK_WIDTH
+				}, WHITE);
+	}
+	EndShaderMode();
+
+}
+
 

@@ -210,6 +210,7 @@ static void drawPallete(Rectangle rec) {
 
 
 void drawProfiler(Rectangle rec);
+void debugRender(Rectangle rec);
 
 static void drawStats(Rectangle rec) {
 	Rectangle item = (Rectangle){
@@ -232,6 +233,10 @@ static void drawStats(Rectangle rec) {
 		World.playtime%60)
 	);
 	item.y += item.height + 5;
+
+	rec.height = rec.y + rec.height - item.y;
+	rec.y = item.y;
+	debugRender(rec);
 }
 
 

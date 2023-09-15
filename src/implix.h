@@ -58,3 +58,5 @@ void insertChunk(struct chunkmap* m, struct chunk* c);
 struct chunk* removeChunk(struct chunkmap* m, struct chunk* c); // returns next chunk if avail.
 
 bool updateChunk(struct chunk* c);
+
+void updateRender(Camera2D cam);

@@ -84,8 +84,10 @@ void GuiLoadStyleDark();
 bool game_working = true;
 
 static void frame(bool should_close) {
+		prof_begin(PROF_FINDRAW);
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
+		prof_end(PROF_FINDRAW);
 
 		prof_begin(PROF_DRAW);
 		if (SCREEN && SCREEN->draw) SCREEN->draw();

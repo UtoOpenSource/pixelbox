@@ -196,11 +196,11 @@ void drawProfiler(Rectangle rec) {
 	item.x      = rec.x + 70; 
 	item.height = (rec.y + rec.height) - item.y - 10;
 
-	float max_value = 0;
-	for (int i = 0; i < PROF_HISTORY_LEN; i++) {
+	float max_value = 1.0/75.0;
+	/*for (int i = 0; i < PROF_HISTORY_LEN; i++) {
 		float v = prof_summary(PROF_GAMETICK)[i].sumtime;
 		if (v > max_value) max_value = v;
-	}
+	}*/
 
 	float plot_scale = item.height / max_value;
 
