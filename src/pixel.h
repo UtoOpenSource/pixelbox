@@ -69,6 +69,13 @@ extern struct worldState {
 	bool is_update_enabled;
 } World;
 
+
+struct save_file {
+	const char* path;
+	uint64_t    time;
+	int         mode;
+};
+
 // PUBLIC INTERFACE
 
 // global initialization/destruction
@@ -111,3 +118,8 @@ bool saveProperty(const char* k, int64_t v);
 uint8_t softGenerate(int16_t ox, int16_t oy); // how chunk may look like
 
 extern struct chunk empty;
+
+bool getWorldInfo(const char* path, uint64_t *time, int *mode);
+
+extern const char* world_modes[];
+extern const int world_modes_count;

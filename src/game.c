@@ -91,7 +91,7 @@ static void frame(bool should_close) {
 
 		prof_begin(PROF_DRAW);
 		if (SCREEN && SCREEN->draw) SCREEN->draw();
-		DrawText("Pixelbox", 0, 0, 10, WHITE);
+		DrawText(TextFormat("%s%p","Pixelbox", SCREEN), 0, 0, 10, PURPLE);
 		prof_end();
 
 		prof_begin(PROF_UPDATE);
@@ -108,14 +108,15 @@ static void frame(bool should_close) {
 
 		// screen system
 		prof_begin(PROF_INIT_FREE);
+		if (should_close) {
+			if (SCREEN && SCREEN->onclose) SCREEN->onclose();
+			else if (SCREEN && SCREEN->back) SetPrevScreen(NULL);
+			else game_working = false;
+		}
 		if (CHANGE) {
 			if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 			SCREEN = CHANGE;
 			CHANGE = NULL;
-		}
-		if (should_close) {
-			if (SCREEN && SCREEN->onclose) SCREEN->onclose();
-			else game_working = false;
 		}
 		prof_end();
 }

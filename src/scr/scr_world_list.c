@@ -22,43 +22,66 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 #include <time.h>
 
-static const char** list = NULL;
+int GuiSavesViewEx(Rectangle bounds, struct save_file *saves, int count, int *focus, int *scrollIndex, int active);
+
+static struct save_file* saves = NULL;
+static size_t saves_len = 0;
 static FilePathList files;
-static int list_len, scroll, active;
+static int scroll, active;
+
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <sys/stat.h>
+#endif
 
 static void create() {
 	WorldRefCreate();
+	#if _WIN32
+	_mkdir(".\\saves");
+	#else
+	mkdir("./saves", 0777);
+	#endif
+
 	files = LoadDirectoryFilesEx("./saves", ".db", false);
 	if (!files.count || !files.paths) {
-		list = NULL; list_len = 0;
+		saves = NULL; saves_len = 0;
 		return;
 	}
-	list = (const char**)calloc(sizeof(char*), files.count + 1);
-	assert(list);
-	memcpy(list, files.paths, files.count*sizeof(char*));
-	list_len = files.count, scroll = 0, active = 0;
+
+	saves = calloc(sizeof(struct save_file), files.count + 1);
+	assert(saves);
+	for (size_t i = 0; i < files.count; i++) {
+		saves[i].path = files.paths[i];
+		if (!getWorldInfo(files.paths[i], &saves[i].time, &saves[i].mode)) {
+			saves[i].mode = -1;
+			saves[i].time = 0;
+		};
+	}
+	saves_len = files.count, scroll = 0, active = 0;
 }
 
 static void destroy() {
-	free(list);
+	free(saves);
 	UnloadDirectoryFiles(files);
 	WorldRefDestroy();
 }
 
+
 // world selection dialog
 static void draw() {
 	GuiEnable();
-
 	Rectangle rec = GuiMenuWindow("Select world file");
 	rec.height -= 35*2;
 
-	if (list && list_len) {
-		active = GuiListViewEx(rec, list, list_len, NULL, &scroll, active);
+	if (saves && saves_len) {
+		active = GuiSavesViewEx(rec, saves, saves_len, NULL, &scroll, active);
 	} else {
 		active = -1;
-		GuiLine(rec, "No world files avaliable");
+		GuiLabel(rec, "No world files avaliable");
 	}
 
 	rec.y += rec.height + 5;
@@ -67,25 +90,25 @@ static void draw() {
 
 	int activez = active >= 0 ? active : 0;
 
-	if (!list || !list_len || active < 0) GuiDisable();
+	if (!saves || !saves_len || active < 0) GuiDisable();
 	
 	if (GuiButton(rec, "Delete")) {
-		remove(list[activez]);
-		list_len -= 1;
-		for (int i = activez; i < list_len; i++) {
-			list[activez] = list[activez + 1];
+		remove(saves[activez].path);
+		saves_len -= 1;
+		for (int i = activez; i < saves_len; i++) {
+			saves[activez] = saves[activez + 1];
 		}
 	}
 
 	rec.x += rec.width + 4;
 	if (GuiButton(rec, "Open")) {
-			SetWindowTitle(TextFormat("[pixelbox] : %s", list[activez]));
-			openWorld(list[activez]);
+			SetWindowTitle(TextFormat("[pixelbox] : %s", saves[activez].path));
+			openWorld(saves[activez].path);
 			SetRootScreen(&ScrGamePlay);
 	}
 	GuiEnable();
 	rec.y += 25;
-	GuiLine(rec, TextFormat("%i : %s", active, list? list[activez] : "nul"));
+	GuiLine(rec, TextFormat("%i : %s", active, saves? saves[activez].path : "nul"));
 }
 
 static void update() {

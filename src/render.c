@@ -72,7 +72,7 @@ NULL
 #endif
 ;
 
-#define BUILDERWIDTH 32
+#define BUILDERWIDTH 64
 #define RENDER_MAX   BUILDERWIDTH*BUILDERWIDTH
 
 struct gitem { // graphical item (chunk)
@@ -113,6 +113,7 @@ void freeBuilder() {
 	UnloadShader(Builder.shader);
 	for (int i = 0; i < RENDER_MAX; i++) 
 		Builder.items[i].used = false;
+	Builder.freeitem = 0;
 }
 
 /*
@@ -196,7 +197,7 @@ static struct gitem* getItem(struct chunk* c) {
 	for (int i = 0; i < RENDER_MAX; i++) {
 		if (Builder.items[i].pos.pack == pos.pack) {
 			o = Builder.items + i;
-			if (!o->used) o->used = 1;
+			if (!o->used) continue;
 			if (c->is_changed) {
 				updateData(i, c);
 			}
@@ -234,7 +235,7 @@ void updateRender(Camera2D cam) {
 		if (!o->used) continue;
 		if (!collides(o, x0, y0, x1, y1)) {
 			o->used = false;
-			fprintf(stderr, "collected %i\n", o->pos.pack);
+			//fprintf(stderr, "collected %i\n", o->pos.pack);
 			if (i < Builder.freeitem) Builder.freeitem = i;
 		}
 	}

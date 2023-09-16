@@ -32,6 +32,14 @@ uint8_t* getChunkData(struct chunk* c, const bool mode) {
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+const char* world_modes[] = {
+	"Normal",
+	"Flat",
+	"Sponge"
+};
+
+const int world_modes_count = 3;
+
 static uint8_t gen_normal(int32_t ax, int32_t ay) {
 	float v;
 	

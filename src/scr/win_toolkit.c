@@ -33,7 +33,7 @@ void initToolkit() {
 }
 
 void freeToolkit() {
-
+	GuiUnlock();
 }
 
 static uint8_t b_rainbow() {
@@ -131,8 +131,13 @@ static const char* getbtext(int type) {
 	} else return TextFormat("%i", (int)type);
 }
 
+static int8_t bnorm(int v) {
+	if (v < 0) return 0;
+	return v;
+}
+
 static void colorbutton(Rectangle rec, int type) {
-	int v = getcolor(type, color_gradient);
+	int v = getcolor(type, bnorm(color_gradient));
 	if (GuiColorButton(rec, 
 				getPixelColor(v), 
 				getbtext(type)
@@ -151,10 +156,6 @@ static Rectangle getgrec(int i, Rectangle rec) {
 	};	
 }
 
-static int8_t bnorm(int v) {
-	if (v < 0) return 0;
-	return v;
-}
 
 
 // color transformation
@@ -211,6 +212,8 @@ static void drawPallete(Rectangle rec) {
 
 void drawProfiler(Rectangle rec);
 void debugRender(Rectangle rec);
+void debugAllocator(Rectangle rec);
+static bool show_alloc = false;
 
 static void drawStats(Rectangle rec) {
 	Rectangle item = (Rectangle){
@@ -232,13 +235,22 @@ static void drawStats(Rectangle rec) {
 		(World.playtime/60)%60,
 		World.playtime%60)
 	);
+	int oldx = item.x;
+	int oldw = item.width;
+	item.x += 250;
+	item.width -= 250;
+	show_alloc = GuiToggle(item, "Allocator", show_alloc);
+	item.x = oldx;
+	item.width = oldw; 
 	item.y += item.height + 5;
 
 	rec.height = rec.y + rec.height - item.y;
 	rec.y = item.y;
-	debugRender(rec);
+	if (show_alloc) debugAllocator(rec);
+	else debugRender(rec);
 }
 
+extern struct screen ScrSaveProc;
 
 void drawToolkit() {
 	GuiPanel(winrec, TextFormat("[PIXELBOX] (%i FPS)", (int)GetFPS()));
@@ -302,7 +314,7 @@ void drawToolkit() {
 			item.y += item.height + 5;
 
 			if (GuiButton(item, "Save and exit")) {
-				SetRootScreen(&ScrMainMenu);	
+				SetRootScreen(&ScrSaveProc);	
 			};
 		}; break;
 		case 1 : {// pallete 

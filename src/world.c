@@ -41,7 +41,6 @@ void flushChunks();
 void flushSaveLoad();
 
 void flushWorld (void) {
-	prof_begin(PROF_DISK);
 	saveProperty("seed", World.seed);
 	saveProperty("mode", World.mode);
 	saveProperty("playtime", World.playtime);
@@ -60,7 +59,6 @@ void flushWorld (void) {
 	flushChunks(); // save all chunks in the World.map hashmap
 	while (saveloadTick()) {} // and from World.save hashmap
 	flushSaveLoad(); // flush to original file
-	prof_end();
 }
 
 void initSaveLoad(const char* path);
@@ -69,10 +67,7 @@ void freeSaveLoad();
 void freeWorld(void) {
 	collectAnything(); // cleans up World.map to World.save
 	flushWorld(); // flushChunks() is not called there, btw
-
-	prof_begin(PROF_DISK);
 	freeSaveLoad();
-	prof_end();
 }
 
 

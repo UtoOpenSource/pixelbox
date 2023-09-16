@@ -34,7 +34,10 @@ void WorldRefCreate() {
 void WorldRefDestroy() {
 	if (!refcnt) return;
 	refcnt--;
-	if (!refcnt) freeWorld();
+	if (!refcnt) {
+		fprintf(stderr, "World saved!\n");
+		freeWorld();
+	}
 }
 
 #include <limits.h>
@@ -55,7 +58,7 @@ static void create() {
 	if (loadProperty("zoom", &v)) {
 		cam.zoom = v / 7000.0;
 		if (cam.zoom < 0.5) cam.zoom = 0.5;
-		if (cam.zoom > 10) cam.zoom = 10;
+		if (cam.zoom > 50) cam.zoom = 50;
 	} else cam.zoom = 3;
 
 	int64_t x, y;
@@ -91,6 +94,8 @@ void drawToolkit();
 
 #include "implix.h"
 
+void updateRender(Camera2D cam);
+
 static void draw() {
 	cam.offset = (Vector2){GetScreenWidth()/2, GetScreenHeight()/2};	
 	BeginMode2D(cam); // draw world
@@ -113,9 +118,6 @@ static void update() {
 			cam.target.y -= md.y /cam.zoom;
 		}
 
-		cam.zoom += GetMouseWheelMove() * 0.15 * cam.zoom;
-		if (cam.zoom < 0.01) cam.zoom = 0.01;
-		if (cam.zoom > 100) cam.zoom = 100;
 
 		// input
 		if (IsMouseButtonDown(1)) {
@@ -133,6 +135,28 @@ static void update() {
 			cam.zoom   = 3;
 		}
 
+		if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) 
+			cam.target.y -= 1 / cam.zoom;
+
+		if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) 
+			cam.target.y += 1 / cam.zoom;
+
+		if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) 
+			cam.target.x -= 1 / cam.zoom;
+
+		if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) 
+			cam.target.x += 1 / cam.zoom;
+
+		if (IsKeyDown(KEY_Q)) 
+			cam.zoom -= 0.15;
+
+		if (IsKeyDown(KEY_E)) 
+			cam.zoom += 0.15;
+
+		cam.zoom += GetMouseWheelMove() * 0.15 * cam.zoom;
+
+		if (cam.zoom < 0.5) cam.zoom = 0.5;
+		if (cam.zoom > 50) cam.zoom = 50;
 	}
 
 	prof_begin(PROF_UPDATE);
@@ -153,7 +177,13 @@ static void update() {
 	}
 }
 
+extern struct screen ScrSaveProc;
+
+static void onclose() {
+	SetRootScreen(&ScrSaveProc);
+}
+
 struct screen ScrGamePlay = {
-	NULL, draw, update, create, destroy
+	NULL, draw, update, create, destroy, onclose
 };
 

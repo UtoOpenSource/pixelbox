@@ -54,6 +54,11 @@ struct chunk* removeChunk(struct chunkmap* m, struct chunk* c) {
 
 // magic. We must remove and just put anything to save&free queue!
 void collectAnything (void) {
+
+	for (int i = 0; i < MAPLEN; i++) {
+		World.update.data[i] = NULL; // yeah...
+	}
+
 	for (int i = 0; i < MAPLEN; i++) {
 		struct chunk* c = World.map.data[i];
 		while (c) {
@@ -67,11 +72,13 @@ void collectAnything (void) {
 
 int collectGarbage (void) {
 	int limit = 0;
+
+	// collect general
 	for (int i = 0; i < MAPLEN; i++) {
 		struct chunk *c = World.map.data[i], *old = NULL;
 		while (c) {
 			if (c->usagefactor >= 0) c->usagefactor--;
-			if (c->usagefactor < 0 && limit < 5) { // REMOVE AND COLLECT
+			if (c->usagefactor < 0 && limit < GC_LIMIT_PER_TICK) { // REMOVE AND COLLECT
 				struct chunk* f = c;
 				if (old) old->next = c->next; // remove
 				else World.map.data[i] = c->next; // remove
@@ -86,6 +93,30 @@ int collectGarbage (void) {
 		}
 		// OK
 	}
+
+	limit = 0;
+	// collect load
+	for (int i = 0; i < MAPLEN; i++) {
+		struct chunk *c = World.load.data[i], *old = NULL;
+		while (c) {
+			if (c->usagefactor > 0) c->usagefactor--;
+			if (c->usagefactor <= 0 && limit < GC_LIMIT_PER_TICK) { // REMOVE AND COLLECT
+				struct chunk* f = c;
+				// next2, since load is minor hashmap!
+				if (old) old->next2 = c->next2; // remove
+				else World.load.data[i] = c->next2; // remove
+				c = c->next2;
+				// old stays the same
+				freeChunk(f); // remove it NOW!
+				limit++;
+			} else {
+				old = c;
+				c = c->next;
+			}
+		}
+		// OK
+	}
+
 	return 0;
 }
 

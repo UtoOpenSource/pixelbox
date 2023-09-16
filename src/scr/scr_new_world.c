@@ -24,15 +24,25 @@
 #include <assert.h>
 #include <time.h>
 
-static bool stat = false;
+static bool status = false;
 static char seed     [64] = {0};
 static char filename [64] = ":null:";
 static int  mode          = 0;
 static int  input = 0, input2 = 0;
 
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <sys/stat.h>
+#endif
 
 static void create() {
 	WorldRefCreate();
+	#if _WIN32
+	_mkdir(".\\saves");
+	#else
+	mkdir("./saves", 0777);
+	#endif
 	snprintf(seed, 64, "%li", time(NULL)*clock());
 }
 

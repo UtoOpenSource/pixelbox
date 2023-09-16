@@ -48,6 +48,8 @@ const char* splash = "indev!";
 // world selection dialog
 static void draw() {
 	GuiEnable();
+	//GuiUnlock();
+	//fprintf(stderr, "OK\n");
 
 	Rectangle rec = GuiMenuWindow("Pixelbox");
 
@@ -108,7 +110,11 @@ static void update() {
 
 }
 
+static void onclose() {
+	fprintf(stderr, "ESC\n");
+}
+
 struct screen ScrMainMenu = {
-	NULL, draw, update, create, destroy
+	NULL, draw, update, create, destroy, onclose
 };
 

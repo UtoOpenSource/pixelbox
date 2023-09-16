@@ -20,7 +20,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "c89threads.h"
+#include "libs/c89threads.h"
 
 #define NODE_LEN   128
 #define FREE_INDEX 65000
@@ -205,4 +205,35 @@ void freeChunk(struct chunk* orig) {
 	memset(&it->data, 0, sizeof(struct chunk));
 
 	c89mtx_unlock(&alloc_mutex); // done
+}
+
+#include "raylib.h"
+
+void debugAllocator(Rectangle rec) {
+	rec.width -= rec.width/3;
+
+	struct alloc_node* n = node_list;
+	int b = 0;
+	while (n) {
+		for (int i = 0; i < NODE_LEN; i++) {
+			int x = i % 16;
+			int ay = (int)((x + b * 18) / (int)rec.width) * 10;
+			int y = i / 16 + ay;
+			struct alloc_item* it = n->items + i;
+			DrawPixel(
+				rec.x + (x + b * 18) % (int)rec.width, rec.y + y, 
+				it->index != FREE_INDEX ? BLUE : GRAY
+			);
+		}
+
+		int x = n->empty % 16;
+		int ay = (int)((x + b * 18) / (int)rec.width)*10;
+		int y = n->empty / 16 + ay;
+		DrawPixel(
+			rec.x + (x + b * 18) % (int)rec.width,
+			rec.y + y, YELLOW
+		);
+		n = n->next; b++;
+	}
+
 }
