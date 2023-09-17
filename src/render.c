@@ -143,6 +143,17 @@ void debugRender(Rectangle rec) {
 	int x = Builder.freeitem % BUILDERWIDTH;
 	int y = Builder.freeitem / BUILDERWIDTH;
 	DrawPixel(rec.x + x, rec.y + y, YELLOW);
+
+	rec.x += BUILDERWIDTH + 5;
+	for (int i = 0; i < MAPLEN; i++) {
+		struct gitem *o = Builder.map[i];
+		int j = 0;
+		while (o) {
+			DrawPixel(rec.x + j, rec.y + i, PINK);
+			o = o->next;
+			j++;
+		}
+	}
 }
 
 // manip
@@ -226,12 +237,16 @@ static struct gitem* getItem(union packpos pos) {
 	struct gitem* o = findItem(pos);
 
 	if (o) { // founded! do some important stuff...
-		// MARKS FOR GC TOO!
-		struct chunk* c = getWorldChunk(pos.axis[0], pos.axis[1]);
 
-		if (c == &empty) { // oh fuck!
-			return o; // we can try, at least...
-		}
+		// fast path
+		struct chunk* c = findChunk(&World.map, pos.axis[0], pos.axis[1]);
+		assert(c != NULL);
+		/*{ // oh fuck!
+			removeItem(o);
+			Builder.requests--;
+			return NULL; 
+		}*/
+		c->usagefactor = CHUNK_USAGE_VALUE;
 		
 		if (c->is_changed) {
 			updateData((int)(o - Builder.items), c); // nice
@@ -243,10 +258,12 @@ static struct gitem* getItem(union packpos pos) {
 	Builder.requests++;
 	if (Builder.requests >= RENDER_MAX) return NULL; // ok
 
-	o = newItem(pos);
-	if (!o) return NULL;
+	struct chunk* c;
 
-	struct chunk* c = getWorldChunk(pos.axis[0], pos.axis[1]);
+	o = newItem(pos);
+	if (!o) return NULL; // should not happen
+
+	c = getWorldChunk(pos.axis[0], pos.axis[1]);
 	if (c == &empty) { // oh man...
 		removeItem(o);
 		return NULL;
@@ -298,25 +315,26 @@ void updateRender(Camera2D cam) {
 	}
 
 	BeginShaderMode(Builder.shader);
-	for (int i = 0; i < RENDER_MAX; i++) {
+	for (int i = 0; i < MAPLEN; i++) {
+		struct gitem *o = Builder.map[i];
+		while (o) {
+			int i = (int)(o - Builder.items);
 			int x = i % BUILDERWIDTH;
 			int y = i / BUILDERWIDTH;
-			struct gitem* o = Builder.items + i;
-
-			if (!o->used) continue;
-
 			DrawTextureRec(
-				Builder.texture,
-				(Rectangle) {
-					x*CHUNK_WIDTH,
-					y*CHUNK_WIDTH,
-					CHUNK_WIDTH,
-					CHUNK_WIDTH
-				}, 
-				(Vector2) {
-					o->pos.axis[0] * CHUNK_WIDTH,
-					o->pos.axis[1] * CHUNK_WIDTH
-				}, WHITE);
+					Builder.texture,
+					(Rectangle) {
+						x*CHUNK_WIDTH,
+						y*CHUNK_WIDTH,
+						CHUNK_WIDTH,
+						CHUNK_WIDTH
+					}, 
+					(Vector2) {
+						o->pos.axis[0] * CHUNK_WIDTH,
+						o->pos.axis[1] * CHUNK_WIDTH
+					}, WHITE);
+			o = o->next;
+		}
 	}
 	EndShaderMode();
 

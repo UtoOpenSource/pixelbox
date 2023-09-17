@@ -213,7 +213,40 @@ static void drawPallete(Rectangle rec) {
 void drawProfiler(Rectangle rec);
 void debugRender(Rectangle rec);
 void debugAllocator(Rectangle rec);
-static bool show_alloc = false;
+static int  active_stat = 0;
+static int  active_hash = 0;
+
+void debugHash(Rectangle rec) {
+		
+	Rectangle item = {rec.x, rec.y-20, 50, 20};
+	active_hash = GuiToggleGroup(item, "Map;Load;Save;Update", active_hash);
+
+	struct chunkmap* m = NULL;
+	if (active_hash == 0) m = &World.map;
+	else if (active_hash == 1) m = &World.load;
+	else if (active_hash == 2) m = &World.save;
+	else m = &World.update;
+
+	for (int i = 0; i < MAPLEN; i++) {
+		struct chunk *o = m->data[i];
+		int j = 0;
+		DrawPixel(rec.x + i, rec.y - 1, YELLOW);
+		if (m->g) {
+			assert(active_hash == 0);
+			while (o) {
+				DrawPixel(rec.x + i, rec.y + j, MAGENTA);
+				o = o->next;
+				j++;
+			}
+		} else {
+			while (o) {
+				DrawPixel(rec.x + i, rec.y + j, PINK);
+				o = o->next2;
+				j++;
+			}
+		}
+	}
+}
 
 static void drawStats(Rectangle rec) {
 	Rectangle item = (Rectangle){
@@ -237,17 +270,19 @@ static void drawStats(Rectangle rec) {
 	);
 	int oldx = item.x;
 	int oldw = item.width;
-	item.x += 250;
-	item.width -= 250;
-	show_alloc = GuiToggle(item, "Allocator", show_alloc);
+	item.x += 200;
+	item.width -= 300;
+	item.height += 10;
+	active_stat = GuiToggleGroup(item, "Hash;Render;Allocator", active_stat);
 	item.x = oldx;
 	item.width = oldw; 
 	item.y += item.height + 5;
 
 	rec.height = rec.y + rec.height - item.y;
 	rec.y = item.y;
-	if (show_alloc) debugAllocator(rec);
-	else debugRender(rec);
+	if (active_stat == 2) debugAllocator(rec);
+	else if (active_stat == 1) debugRender(rec);
+	else debugHash(rec);
 }
 
 extern struct screen ScrSaveProc;

@@ -222,7 +222,8 @@ void debugAllocator(Rectangle rec) {
 			struct alloc_item* it = n->items + i;
 			DrawPixel(
 				rec.x + (x + b * 18) % (int)rec.width, rec.y + y, 
-				it->index != FREE_INDEX ? BLUE : GRAY
+				it->index != FREE_INDEX ?
+					Fade(BLUE, it->data.usagefactor/(float)CHUNK_USAGE_VALUE) : GRAY
 			);
 		}
 

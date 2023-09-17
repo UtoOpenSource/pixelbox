@@ -39,8 +39,8 @@ struct chunk {
 	bool		wIndex; 
 };
 
-#define MAPLEN 64 // must be pow of 2!
-#define MINILEN 64 // must be pow of 2!
+#define MAPLEN 128 // must be pow of 2!
+#define MINILEN 128 // must be pow of 2!
 
 // specialized hashmap => chunkmap
 struct chunkmap {

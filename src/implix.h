@@ -26,16 +26,38 @@
 
 #define MAPINT(V) ((V) & (MAPLEN-1))
 
+// specialized murmur hash (was in public domain)
+// original : github.com/abrandoned/murmur2/blob/master/MurmurHash2.c
+static inline uint32_t murmurhash (uint32_t *data) {
+	const uint32_t m = 0x5bd1e995;
+	const int r = 24;
+
+	/* Initialize the hash to a 'random' value */
+  uint32_t h = 3907472 ^ 4;
+
+	/* Mix 4 bytes at a time into the hash */
+	uint32_t k = *(uint32_t*)data;
+		
+	k *= m;
+	k ^= k >> r;
+	k *= m;
+
+	h *= m;
+	h ^= k;
+
+  /* Do a few final mixes of the hash to ensure the last few
+  // bytes are well-incorporated.  */
+
+  h ^= h >> 13;
+  h *= m;
+  h ^= h >> 15;
+
+  return h;
+} 
+
 static inline uint32_t hash_function(uint32_t value) {
-	char* v = (char*)&value;
-	uint32_t hash = 0;
-#define HASH_STEP() hash += *v; hash -= (hash << 13) | (hash >> 19); v++;
-	HASH_STEP();
-	HASH_STEP();
-	HASH_STEP();
-	HASH_STEP();
-#undef HASH_STEP
-	return hash;
+	//return SuperFastHash((char*) &value, sizeof(value)); 
+	return murmurhash(&value);
 }
 	
 #define MAPHASH(V) MAPINT(hash_function(V)) // hash & mapfunc
