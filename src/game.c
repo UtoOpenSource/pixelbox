@@ -131,12 +131,19 @@ Color getPixelColor(uint8_t val) {
 	return color;
 }
 
+#include "settings.h"
+
 int main() {
 	prof_begin(PROF_INIT_FREE);
 	_initAtoms();
+	reloadSettings();
 	SetTraceLogLevel(LOG_DEBUG);
-	SetConfigFlags(FLAG_VSYNC_HINT);
-	InitWindow(640, 480, "[PixelBox] : loading");
+
+	if (conf_vsync) { 
+		SetConfigFlags(FLAG_VSYNC_HINT);
+	} else SetTargetFPS(conf_max_fps);
+
+	InitWindow(conf_win_width, conf_win_height, "[PixelBox] : loading");
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	GuiLoadStyleDark();
 	initAssetSystem();
@@ -154,7 +161,11 @@ int main() {
 	// free screen
 	if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 
+	conf_win_width = GetScreenWidth();
+	conf_win_height = GetScreenHeight();
+
 	freeAssetSystem();
 	CloseWindow();
+	saveSattings();
 	return 0;
 }

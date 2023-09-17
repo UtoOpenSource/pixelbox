@@ -1,2 +1,3 @@
 INCS  := -I./src/ -I./src/libs
-FLAGS := -O1 -g
+FLAGS := -O2
+LFLAGS := -s

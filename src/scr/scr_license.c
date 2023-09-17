@@ -49,9 +49,24 @@ static void destroy() {
 
 }
 
+static Vector2 scroll = {0, 0};
+
 static void draw() {
 	Rectangle rec = GuiMenuWindow("License");
-	GuiTextView(rec, license);
+	rec.height -= 10;
+	Rectangle con = {0, 0, 400, 350};
+	Rectangle out = GuiScrollPanel(rec, NULL, con, &scroll);
+	BeginScissorMode(out.x, out.y, out.width, out.height);
+	con.y = out.y + scroll.y;
+	con.x = out.x + scroll.x;
+	GuiTextView(con, license);
+	con.y += con.height - 40;
+	con.height = 20;
+	con.width  = con.width / 2 - 5;
+	if (GuiButton(con, "Get Source Code")) {
+		OpenURL("https://github.com/UtoECat/pixelbox");
+	}
+	EndScissorMode();
 }
 
 static void update() {

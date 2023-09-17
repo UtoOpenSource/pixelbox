@@ -7,7 +7,7 @@ OBJS := $(SRCS:./src/%.c=./bin/%.o)
 FLAGS +=  
 
 kisspixel : $(OBJS)
-	$(CC) $^ -o $@ -lm -lpthread -lraylib $(FLAGS)
+	$(CC) $^ -o $@ $(LFLAGS) -lm -lpthread -lraylib $(FLAGS)
 
 ./bin/%.o : ./src/%.c
 	mkdir -p $(dir $@)

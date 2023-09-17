@@ -31,9 +31,35 @@ static void destroy() {
 
 }
 
+#include "settings.h"
+#include <stdio.h>
+
 static void draw() {
 	GuiEnable();
 	Rectangle rec = GuiMenuWindow("Settings");
+	Rectangle item = {rec.x, rec.y, 200, 20};
+
+	int new_fps = GuiSliderBar(item, NULL, TextFormat("Max FPS : %i", conf_max_fps), conf_max_fps, 0, 240);
+	if (new_fps != conf_max_fps) {
+		conf_max_fps = new_fps;
+		if (!conf_vsync) SetTargetFPS(conf_max_fps);
+	}
+
+	item.y += 25;
+
+	if (GuiToggle(item, "Enable Vsync", conf_vsync) != conf_vsync) {
+		conf_vsync = !conf_vsync;
+		fprintf(stderr, "%i\n", (int)conf_vsync);
+		if (conf_vsync) {
+			SetTargetFPS(0);
+			SetWindowState(FLAG_VSYNC_HINT);
+		} else {
+			ClearWindowState(FLAG_VSYNC_HINT);
+			SetTargetFPS(conf_max_fps);
+		}
+	}
+
+	item.y += 25;
 }
 
 static void update() {

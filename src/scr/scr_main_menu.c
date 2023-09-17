@@ -29,7 +29,10 @@
 const char* getSplash();
 void        rngSplash();
 
+static double old_time;
+
 static void create() {
+	old_time = GetTime() + 3;
 	rngSplash();
 	SetWindowTitle(TextFormat("[pixelbox] : %s", getSplash()));
 }
@@ -111,6 +114,7 @@ static void update() {
 }
 
 static void onclose() {
+	if (GetTime() > old_time) game_working = false; // can ESC
 	fprintf(stderr, "ESC\n");
 }
 
