@@ -77,6 +77,7 @@ NULL
 
 struct gitem { // graphical item (chunk)
 	union packpos pos;
+	struct gitem* next;
 	bool used;
 };
 
@@ -84,7 +85,9 @@ struct {
 	Shader  shader;
 	Texture texture;
 	struct gitem items[RENDER_MAX];
+	struct gitem* map[MAPLEN];
 	uint16_t freeitem; // index of free item
+	uint16_t requests;
 } Builder;
 
 static char unused[CHUNK_WIDTH*BUILDERWIDTH*CHUNK_WIDTH*BUILDERWIDTH] = {0};
@@ -111,44 +114,12 @@ void initBuilder() {
 void freeBuilder() {
 	UnloadTexture(Builder.texture);
 	UnloadShader(Builder.shader);
-	for (int i = 0; i < RENDER_MAX; i++) 
+	for (int i = 0; i < RENDER_MAX; i++)
 		Builder.items[i].used = false;
+	for (int i = 0; i < MAPLEN; i++)
+		Builder.map[i] = NULL;
 	Builder.freeitem = 0;
 }
-
-/*
-void flushChunksCache() {
-	BeginShaderMode(Builder.shader);
-	for (int pos = 0; pos < Builder.iteration; pos++) {
-		int x = pos % BUILDERWIDTH;
-		int y = pos / BUILDERWIDTH;
-		DrawTextureRec(Builder.textures[Builder.texidx], (Rectangle){x*CHUNK_WIDTH, y*CHUNK_WIDTH, CHUNK_WIDTH, CHUNK_WIDTH}, 
-			(Vector2){Builder.positions[x*2 + y*BUILDERWIDTH*2],
-				Builder.positions[x*2 + y*BUILDERWIDTH*2 + 1]}, WHITE);
-	}
-	Builder.iteration = 0;
-	Builder.texidx = !Builder.texidx;
-	EndShaderMode();
-} */
-
-
-/*
-int  renderChunk(struct chunk* c) {
-	if (!c) return -1;
-	Builder.positions[Builder.iteration * 2] =
-		((int32_t)c->pos.axis[0]) * CHUNK_WIDTH;
-	Builder.positions[Builder.iteration * 2 + 1] =
-		((int32_t)c->pos.axis[1]) * CHUNK_WIDTH;
-	int x = Builder.iteration % BUILDERWIDTH;
-	int y = Builder.iteration / BUILDERWIDTH;
-	UpdateTextureRec(Builder.textures[Builder.texidx], (Rectangle){x * CHUNK_WIDTH,
-			y*CHUNK_WIDTH, CHUNK_WIDTH, CHUNK_WIDTH}, getChunkData(c, MODE_READ));
-	Builder.iteration++;
-	if (Builder.iteration >= BUILDERWIDTH*BUILDERWIDTH) {
-			flushChunksCache();
-	}
-	return 0;
-} */
 
 static bool collides(struct gitem* o, int32_t x, int32_t y, int32_t x2, int32_t y2) {
 	return (
@@ -174,6 +145,54 @@ void debugRender(Rectangle rec) {
 	DrawPixel(rec.x + x, rec.y + y, YELLOW);
 }
 
+// manip
+static struct gitem* findItem(union packpos pos) {
+	uint16_t i = MAPHASH(pos.pack);
+	struct gitem* o = Builder.map[i];
+	
+	while (o) {
+		if (o->pos.pack == pos.pack) return o;
+		o = o->next;
+	}
+
+	return NULL;
+}
+
+struct gitem* newItem(union packpos pos) {
+	repeat:
+	if (Builder.freeitem >= RENDER_MAX) return NULL;
+	struct gitem* o = Builder.items + (Builder.freeitem++);
+	if (o->used) goto repeat;
+	o->used = 1;
+	o->pos.pack = pos.pack;
+
+	uint16_t i = MAPHASH(pos.pack);
+	o->next = Builder.map[i];
+	Builder.map[i] = o;
+	return o;
+}
+
+static struct gitem* removeItem(struct gitem* f) {
+	if (!f) return NULL;
+	uint16_t i = MAPHASH(f->pos.pack);	
+	struct gitem* o = Builder.map[i], *p = NULL;
+
+	while (o) {
+		if (o == f) {
+			if (p) p->next = o->next;
+			else Builder.map[i] = o->next;
+			o->used = false;
+			uint16_t idx = (uint16_t)(o - Builder.items);
+			if (idx < Builder.freeitem) Builder.freeitem = idx;
+			return o->next;
+		};
+		p = o;
+		o = o->next;
+	}
+	perror("CAn'T ERMOVE!");
+	return NULL;
+}
+
 static void updateData(int index, struct chunk* c) {
 	int x = index % BUILDERWIDTH;
 	int y = index / BUILDERWIDTH;
@@ -188,38 +207,59 @@ static void updateData(int index, struct chunk* c) {
 	);
 }
 
-static struct gitem* getItem(struct chunk* c) {
-	if (c == &empty) return NULL;
+#include <assert.h>
 
-	union packpos pos = c->pos;
-	struct gitem* o = NULL;
-
-	for (int i = 0; i < RENDER_MAX; i++) {
-		if (Builder.items[i].pos.pack == pos.pack) {
-			o = Builder.items + i;
-			if (!o->used) continue;
-			if (c->is_changed) {
-				updateData(i, c);
+static void collectItems(int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
+	for (int i = 0; i < MAPLEN; i++) {
+		struct gitem *o = Builder.map[i];
+		while (o) {
+			assert(o->used && "render hashmap corrupted!");
+			if (!collides(o, x0, y0, x1, y1)) {
+				 o = removeItem(o); // hehe
 			}
-			return o;
+			else o = o->next;
 		}
 	}
+}
 
-	retry:
-	if (Builder.freeitem >= RENDER_MAX) return NULL;
-	if (Builder.items[Builder.freeitem].used) {
-		Builder.freeitem++; goto retry;
+static struct gitem* getItem(union packpos pos) {
+	struct gitem* o = findItem(pos);
+
+	if (o) { // founded! do some important stuff...
+		// MARKS FOR GC TOO!
+		struct chunk* c = getWorldChunk(pos.axis[0], pos.axis[1]);
+
+		if (c == &empty) { // oh fuck!
+			return o; // we can try, at least...
+		}
+		
+		if (c->is_changed) {
+			updateData((int)(o - Builder.items), c); // nice
+		}
+		return o;
 	}
-	Builder.items[Builder.freeitem].used = true;
-	updateData(Builder.freeitem, c);
-	Builder.items[Builder.freeitem].pos.pack = c->pos.pack;
-	//fprintf(stderr, "added %i\n", c->pos.pack);
-	return Builder.items + (Builder.freeitem++);
+
+	// else create new guy!
+	Builder.requests++;
+	if (Builder.requests >= RENDER_MAX) return NULL; // ok
+
+	o = newItem(pos);
+	if (!o) return NULL;
+
+	struct chunk* c = getWorldChunk(pos.axis[0], pos.axis[1]);
+	if (c == &empty) { // oh man...
+		removeItem(o);
+		return NULL;
+	}
+
+	updateData((int)(o - Builder.items), c);
+	return o;
 }
 
 #define swap(a, b) {do {int t = a; a = b; b = t;} while(0);}
 
 void updateRender(Camera2D cam) {
+	Builder.requests = Builder.freeitem;
 	
 	// get rectangle
 	int64_t x0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).x)/ CHUNK_WIDTH - 1;
@@ -230,24 +270,20 @@ void updateRender(Camera2D cam) {
 	if (y1 < y0) swap(y1, y0);
 
 	// collect garbage :З
-	for (int i = 0; i < RENDER_MAX; i++) {
-		struct gitem *o = Builder.items + i;
-		if (!o->used) continue;
-		if (!collides(o, x0, y0, x1, y1)) {
-			o->used = false;
-			//fprintf(stderr, "collected %i\n", o->pos.pack);
-			if (i < Builder.freeitem) Builder.freeitem = i;
-		}
-	}
+	collectItems(x0, y0, x1, y1);
 
 	// add chunks in visible range
 	for (int64_t y = y0; y <= y1; y++) {
 		for (int64_t x = x0; x <= x1; x++) {
-			struct chunk* c = getWorldChunk(x, y);
-			struct gitem* o = getItem(c);
+			union packpos pos;
+			pos.axis[0] = x;
+			pos.axis[1] = y;
+			struct gitem* o;
+
+			o = getItem(pos);
 			
-			float rx = ((int32_t)c->pos.axis[0]) * CHUNK_WIDTH;
-			float ry = ((int32_t)c->pos.axis[1]) * CHUNK_WIDTH;
+			float rx = x * CHUNK_WIDTH;
+			float ry = y * CHUNK_WIDTH;
 
 			if (!o) {
 				DrawRectangleRec(
