@@ -34,7 +34,7 @@ struct chunk {
 	union packpos pos;
 	uint8_t	atoms[CHUNK_WIDTH*CHUNK_WIDTH*2];
 	int8_t	usagefactor; // GC
-	int8_t	wasUpdated : 1;
+	int8_t	wasUpdated; // stage
 	int8_t  is_changed : 1;
 	bool		wIndex; 
 };

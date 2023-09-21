@@ -75,7 +75,7 @@ static uint8_t gen_sponge(int32_t ax, int32_t ay) {
 
 static uint8_t gen_flat(int32_t ax, int32_t ay) {
 	int v = ((ax & 1023) == 64) + ((ay & 1023) == 64);
-	return v ? (v+1)<<2 : 0;
+	return v ? 4<<2 : 0;
 }
 
 static uint8_t (*generators[])(int32_t x, int32_t y) = {

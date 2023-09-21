@@ -81,4 +81,4 @@ struct chunk* findChunk(struct chunkmap* m, int16_t x, int16_t y); // NULL if no
 void insertChunk(struct chunkmap* m, struct chunk* c); 
 struct chunk* removeChunk(struct chunkmap* m, struct chunk* c); // returns next chunk if avail.
 
-bool updateChunk(struct chunk* c);
+bool updateChunk(struct chunk* c, const int);
