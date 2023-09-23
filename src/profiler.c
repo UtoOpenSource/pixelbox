@@ -17,6 +17,7 @@
  */
 
 #include "profiler.h"
+#include "libs/c89threads.h"
 
 const char* prof_entries_names[] = {
 	"game_tick",
@@ -33,6 +34,8 @@ const char* prof_entries_names[] = {
 	"error"
 };
 
+static c89mtx_t prof_threads_mutex;
+
 double prof_clock() {
 	return GetTime();
 }
@@ -42,38 +45,118 @@ struct prof_item {
 	int   entry;
 };
 
-static struct prof_item prof_stack[255] = {0};
-static int    prof_stack_pos = -1;
+struct prof_thread {
+	struct prof_item stack[255];
+	struct prof_stats data[PROF_ENTRIES_COUNT];
+	c89thrd_t id;
+	int stackpos;
+	c89mtx_t mutex;
+} prof_threads[PROF_THREADS_MAX] = {0};
 
-static struct prof_stats prof_history[PROF_ENTRIES_COUNT][PROF_HISTORY_LEN];
+// summary history
+static struct prof_stats prof_history[PROF_THREADS_MAX] [PROF_ENTRIES_COUNT][PROF_HISTORY_LEN];
 static int prof_history_pos = 0;
 
-struct prof_stats prof_data[PROF_ENTRIES_COUNT] = {0};
-
 #include <assert.h>
+#include <stdlib.h>
 
-static inline void push(int i, double time) {
-	prof_stack_pos++;
-	assert(prof_stack_pos < 255 && "profiler stack overflow");
-	prof_stack[prof_stack_pos].time = time; 
-	prof_stack[prof_stack_pos].entry = i;
+static void onfree() {
+	c89mtx_destroy(&prof_threads_mutex);
+	for (int i = 0; i < PROF_THREADS_MAX; i++) {
+		c89mtx_lock(&prof_threads[i].mutex);
+		c89mtx_unlock(&prof_threads[i].mutex);
+		c89mtx_destroy(&prof_threads[i].mutex);
+	}
 }
 
-static inline struct prof_item pop() {
-	struct prof_item i = prof_stack[prof_stack_pos];
-	assert(prof_stack_pos >= 0 && "profiler stack underflow");
-	prof_stack_pos--;
+static int prof_initialized = 0;
+
+// RACE CONDITION : First call of the profiler MUST happen
+// in main thread only. Afterwards, it's safe to use :p
+static void init() {
+	if (prof_initialized) return;
+	c89mtx_init(&prof_threads_mutex, 0);
+	for (int i = 0; i < PROF_THREADS_MAX; i++) {
+		c89mtx_init(&prof_threads[i].mutex, 0);
+		prof_threads[i].stackpos = -1;
+	}
+	atexit(onfree);
+	prof_initialized = 1;
+}
+
+void prof_register_thread() {
+	init();
+
+	c89thrd_t id = c89thrd_current();
+	// LOCKABLE
+	c89mtx_lock(&prof_threads_mutex);
+	for (int i = 0; i < PROF_THREADS_MAX; i++) {
+		if (prof_threads[i].id == 0) {
+			prof_threads[i].id = id;
+			c89mtx_unlock(&prof_threads_mutex);
+			return;
+		}
+	}
+	c89mtx_unlock(&prof_threads_mutex);
+	assert(0 && "Too many threads are already registered in profiler!");
+}
+
+void prof_unregister_thread() {
+	c89thrd_t id = c89thrd_current();
+
+	// non atomic read/write...
+	// but it should not cause problems...
+	for (int i = 0; i < PROF_THREADS_MAX; i++) {
+		if (prof_threads[i].id == id) {
+			prof_threads[i].id = 0;
+			return;
+		}
+	}
+	assert(0 && "Thread is not registered!");
+}
+
+static struct prof_thread* getctx() {
+	c89thrd_t id = c89thrd_current();
+
+	// NON-ATOMIC READ! Should not make problems, surely :clueless:
+	// without this assumption, we will loss A LOT in perfomance
+	for (int i = 0; i < PROF_THREADS_MAX; i++) {
+		if (c89thrd_equal(prof_threads[i].id, id)) {
+			return prof_threads + i;
+		}
+	}
+
+	assert(0 && "This thread was not registered!");
+}
+
+typedef struct prof_thread* ctx_t;
+
+#define GETCTX() ctx_t x = getctx();
+#define LOCK()   c89mtx_lock(&x->mutex)
+#define UNLOCK() c89mtx_unlock(&x->mutex)
+
+static inline void push(ctx_t x, int i, double time) {
+	x->stackpos++;
+	assert(x->stackpos < 255 && "profiler stack overflow");
+	x->stack[x->stackpos].time = time; 
+	x->stack[x->stackpos].entry = i;
+}
+
+static inline struct prof_item pop(ctx_t x) {
+	struct prof_item i = x->stack[x->stackpos];
+	assert(x->stackpos >= 0 && "profiler stack underflow");
+	x->stackpos --;
 	return i;
 }
 
-static inline struct prof_item* get() {
-	struct prof_item *i = prof_stack + prof_stack_pos;
-	assert(prof_stack_pos >= 0 && "profiler stack underflow");
+static inline struct prof_item* get(ctx_t x) {
+	struct prof_item *i = x->stack + x->stackpos ;
+	assert(x->stackpos >= 0 && "profiler stack underflow");
 	return i;
 }
 
-static inline bool have() {
-	return prof_stack_pos >= 0;
+static inline bool have(ctx_t x) {
+	return x->stackpos >= 0;
 }
 
 #include <string.h>
@@ -101,45 +184,56 @@ static inline bool have() {
 
 void prof_begin(int entry) {
 	assert(entry >= 0 && entry < PROF_ENTRIES_COUNT);
+	GETCTX();
+	LOCK();
 	double time = prof_clock();
 
 	// set owntime and sumtime for previous entry
-	if (have()) {
-		struct prof_item* prev  = get();
-		struct prof_stats* stat = prof_data + prev->entry;
+	if (have(x)) {
+		struct prof_item* prev  = get(x);
+		struct prof_stats* stat = x->data + prev->entry;
 
 		stat->owntime += time - prev->time;
 		stat->sumtime += time - prev->time;
 		prev->time     = time;
 	}
 
-	push(entry, time);
-	prof_data[entry].ncalls++;
+	push(x, entry, time);
+	x->data[entry].ncalls++;
+	UNLOCK();
 }
 
 void prof_end() {
-	struct prof_item item = pop();
-	struct prof_stats* stat = prof_data + item.entry;
+	GETCTX();
+	LOCK();
+	struct prof_item item = pop(x);
+	struct prof_stats* stat = x->data + item.entry;
 	double time = prof_clock();
 
 	stat->owntime += time - item.time;
 	stat->sumtime += time - item.time;
 
-	if (have()) { // add to summary time of the current item 
-		struct prof_item* prev  = get();
-		stat = prof_data + prev->entry;
+	if (have(x)) { // add to summary time of the current item 
+		struct prof_item* prev = get(x);
+		stat = x->data + prev->entry;
 
 		stat->sumtime += time - prev->time;
 		prev->time     = time;
 	}
+	UNLOCK();
 }
 
 void prof_step() {
-	assert(prof_stack_pos < 0);
+	GETCTX();
+	LOCK();
+	
+	int thread = x - prof_threads;
+
 	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
-		prof_history[i][prof_history_pos] = prof_data[i];
-		prof_data[i] = (struct prof_stats){0};
-	}
+		prof_history[thread][i][prof_history_pos] = x->data[i];
+		x->data[i] = (struct prof_stats){0};
+	}	
+	UNLOCK();
 	prof_history_pos++;
 	if (prof_history_pos >= PROF_HISTORY_LEN) {
 		prof_history_pos = 0;
@@ -149,9 +243,10 @@ void prof_step() {
 /*
  * the only way to get data back, but it's good enough :P
  */
-struct prof_stats* prof_summary(int entry) {
+struct prof_stats* prof_summary(int entry, int thread) {
 	assert(entry >= 0 && entry < PROF_ENTRIES_COUNT);
-	return prof_history[entry];
+	assert(thread >= 0 && thread < PROF_THREADS_MAX);
+	return prof_history[thread][entry];
 }
 
 #include "raygui.h"
@@ -174,10 +269,15 @@ static Color prof_color(int entry) {
 void drawProfiler(Rectangle rec) {
 	Rectangle item = (Rectangle){
 		rec.x, rec.y,
-		rec.width-5, 10
+		100, 10
 	};
 
-	item.height = (rec.y + rec.height) - item.y - 10;
+	static int active_thrd = 0;
+	active_thrd = GuiComboBox(item, "main;2;3;4;5", active_thrd); 
+
+	item.y += item.height;
+
+	item.height = (rec.y + rec.height) - item.y - 20;
 	item.width  = rec.width - 5; 
 	DrawRectangleRec(item, (Color){0, 0, 0, 255});
 
@@ -205,7 +305,7 @@ void drawProfiler(Rectangle rec) {
 	float plot_scale = item.height / max_value;
 
 	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
-		struct prof_stats* stat = prof_summary(i);
+		struct prof_stats* stat = prof_summary(i, active_thrd);
 		Color color = prof_color(i);
 		for (int ix = 0; ix < PROF_HISTORY_LEN-1; ix++) {
 			float x = item.x + ix * item.width / PROF_HISTORY_LEN;

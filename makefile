@@ -1,4 +1,4 @@
-.PHONY: kisspixel clean
+.PHONY: pixelbox clean
 
 include makecfg
 
@@ -6,7 +6,7 @@ SRCS := $(shell find ./src/ -name '*.c')
 OBJS := $(SRCS:./src/%.c=./bin/%.o)
 FLAGS +=  
 
-kisspixel : $(OBJS)
+pixelbox : $(OBJS)
 	$(CC) $^ -o $@ $(LFLAGS) -lm -lpthread -lraylib $(FLAGS)
 
 ./bin/%.o : ./src/%.c

@@ -40,11 +40,15 @@ static void destroy() {
 	WorldRefDestroy();
 }
 
+#include "profiler.h"
+
 static int func(void* unused) {
 	(void*) unused;
 	c89mtx_lock(&done);
+	prof_register_thread();
 	collectAnything();
 	flushWorld();	
+	prof_unregister_thread();
 	c89mtx_unlock(&done);
 	return 0;
 }

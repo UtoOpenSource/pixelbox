@@ -52,6 +52,8 @@ enum prof_entries {
 
 extern const char* prof_entries_names[];
 
+#define PROF_THREADS_MAX 5
+
 /*
  * the SUMMARY time of every entry SHOULD be equal to sum of it's own execution
  * time AND the summary time of subentries OR the own time OF ALL SUBENTRIES 
@@ -72,6 +74,13 @@ struct prof_stats {
 // I am using the GetTime() function from raylib here.
 double prof_clock(); 
 
+/* 
+ * Every thread, that going to use this profiler, must be properly
+ * registered and unregistered!
+ */
+void prof_register_thread();
+void prof_unregister_thread();
+
 /*
  * Push-Pop-like profiling
  */
@@ -85,7 +94,7 @@ void prof_end();
  * in this array is useful... THat's why i am not doing that :D
  * You can draw plot right from this, it looks okay.
  */
-struct prof_stats* prof_summary(int entry);
+struct prof_stats* prof_summary(int entry, int thread);
 
 /*
  * Call this at the end of the "Game tick", or just to finally write results

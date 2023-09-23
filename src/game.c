@@ -134,6 +134,7 @@ Color getPixelColor(uint8_t val) {
 #include "settings.h"
 
 int main() {
+	prof_register_thread();
 	prof_begin(PROF_INIT_FREE);
 	_initAtoms();
 	reloadSettings();
@@ -167,5 +168,6 @@ int main() {
 	freeAssetSystem();
 	CloseWindow();
 	saveSattings();
+	prof_unregister_thread();
 	return 0;
 }
