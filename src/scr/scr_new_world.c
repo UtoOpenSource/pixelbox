@@ -60,8 +60,6 @@ void remove_spaces(char* s) {
 }
 
 static void draw() {
-	GuiEnable();
-
 	Rectangle rec = GuiMenuWindow("Create New World");
 	rec.height = 25;
 	rec.width /= 2;

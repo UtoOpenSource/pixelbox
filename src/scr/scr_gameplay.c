@@ -111,7 +111,7 @@ static void draw() {
 }
 
 static void update() { 
-	if (!updateToolkit()) { // interact
+	if (!GuiIsLocked() && !updateToolkit()) { // interact
 		if (IsMouseButtonDown(0)) {
 			Vector2 md = GetMouseDelta();
 			cam.target.x -= md.x /cam.zoom;
@@ -164,7 +164,7 @@ static void update() {
 	prof_end(PROF_UPDATE);
 
 	prof_begin(PROF_LOAD_SAVE);
-	if (!IsKeyDown(KEY_F)) saveloadTick(); // done in
+	saveloadTick(); // done in
 	prof_end();
 
 	prof_begin(PROF_GC);

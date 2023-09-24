@@ -35,7 +35,6 @@ static void destroy() {
 #include <stdio.h>
 
 static void draw() {
-	GuiEnable();
 	Rectangle rec = GuiMenuWindow("Settings");
 	Rectangle item = {rec.x, rec.y, 200, 20};
 
@@ -60,6 +59,7 @@ static void draw() {
 	}
 
 	item.y += 25;
+	conf_debug_mode = GuiToggle(item, "Debug Mode", conf_debug_mode);
 }
 
 static void update() {

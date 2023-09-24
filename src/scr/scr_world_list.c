@@ -73,7 +73,6 @@ static void destroy() {
 
 // world selection dialog
 static void draw() {
-	GuiEnable();
 	Rectangle rec = GuiMenuWindow("Select world file");
 	rec.height -= 35*2;
 

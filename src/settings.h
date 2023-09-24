@@ -24,6 +24,7 @@ extern bool  conf_vsync;
 extern int   conf_max_fps;
 extern int   conf_win_width;
 extern int   conf_win_height;
+extern bool  conf_debug_mode;
 
 void reloadSettings();
 void saveSattings();

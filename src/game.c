@@ -24,6 +24,10 @@
 
 static struct screen *SCREEN = &ScrNull, *CHANGE = NULL;
 
+bool CheckCurrentScreen(struct screen* CURR) {
+	return CURR == SCREEN;
+}
+
 void SetNextScreen(struct screen* NEW) {
 	if (NEW == SCREEN || CHANGE) return;
 	if (NEW && NEW->create) NEW->create();
@@ -83,19 +87,35 @@ void GuiLoadStyleDark();
 
 bool game_working = true;
 
+void initDToolkit();
+void freeDToolkit();
+void drawDToolkit();
+bool updateDToolkit();
+
+#include "settings.h"
+
 static void frame(bool should_close) {
 		prof_begin(PROF_FINDRAW);
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
 		prof_end(PROF_FINDRAW);
 
+		int lock = 0;
+		if (conf_debug_mode) lock = updateDToolkit();
+		if (lock) GuiLock();
+
 		prof_begin(PROF_DRAW);
 		if (SCREEN && SCREEN->draw) SCREEN->draw();
 		DrawText(TextFormat("%s%p","Pixelbox", SCREEN), 0, 0, 10, PURPLE);
+		
+		if (conf_debug_mode) drawDToolkit();
 		prof_end();
+
+		if (lock) GuiLock();
 
 		prof_begin(PROF_UPDATE);
 		if (SCREEN && SCREEN->draw) SCREEN->update();
+		GuiUnlock();
 		prof_end();
 	
 		prof_begin(PROF_GC);
@@ -131,7 +151,7 @@ Color getPixelColor(uint8_t val) {
 	return color;
 }
 
-#include "settings.h"
+
 
 int main() {
 	prof_register_thread();
@@ -151,6 +171,8 @@ int main() {
 	SetRootScreen(&ScrMainMenu);
 	prof_end();
 
+	initDToolkit();
+
 	while (game_working) { //!) { 
 		prof_begin(PROF_GAMETICK);
 		frame(WindowShouldClose());
@@ -161,6 +183,8 @@ int main() {
 	
 	// free screen
 	if (SCREEN && SCREEN->destroy) SCREEN->destroy();
+
+	freeDToolkit();
 
 	conf_win_width = GetScreenWidth();
 	conf_win_height = GetScreenHeight();

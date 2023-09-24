@@ -226,7 +226,7 @@ static void collectItems(int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
 		while (o) {
 			assert(o->used && "render hashmap corrupted!");
 			// DEBUG
-			if (!collides(o, x0, y0, x1, y1) || IsKeyDown(KEY_H)) {
+			if (!collides(o, x0, y0, x1, y1)) {
 				 o = removeItem(o); // hehe
 			}
 			else o = o->next;
@@ -297,10 +297,8 @@ void updateRender(Camera2D cam) {
 			pos.axis[1] = y;
 			struct gitem* o = NULL;
 
-			// DEBUG
-			if (!IsKeyDown(KEY_H))
-				o = getItem(pos);
-			
+			o = getItem(pos);
+
 			float rx = x * CHUNK_WIDTH;
 			float ry = y * CHUNK_WIDTH;
 

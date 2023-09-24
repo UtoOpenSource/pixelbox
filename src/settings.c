@@ -22,6 +22,7 @@ int   conf_max_fps = 60;
 bool  conf_vsync   = true;
 int   conf_win_width = 640;
 int   conf_win_height = 480;
+bool  conf_debug_mode = 0;
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -41,6 +42,7 @@ static void settwrite(void* p, size_t s, FILE* f) {
 #define WRITE(V) settwrite(&V, sizeof(V), F)
 
 #include <limits.h>
+#include "version.h"
 
 void reloadSettings() {
 	FILE* F = fopen("config.bin", "rb");
@@ -53,6 +55,8 @@ void reloadSettings() {
 	conf_win_width = LIMIT(conf_win_width, 100, INT_MAX);
 	conf_win_height = READ(conf_win_height, 480);
 	conf_win_height = LIMIT(conf_win_height, 100, INT_MAX);
+	conf_debug_mode = READ(conf_debug_mode, PIXELBOX_DEBUG);
+	conf_debug_mode = LIMIT((int)conf_debug_mode, 0, 1);
 	if (F) fclose(F);
 }
 
@@ -63,5 +67,6 @@ void saveSattings() {
 	WRITE(conf_vsync);
 	WRITE(conf_win_width);
 	WRITE(conf_win_height);
+	WRITE(conf_debug_mode);
 	if (F) fclose(F);
 }

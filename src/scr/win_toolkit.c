@@ -93,7 +93,7 @@ void setline (int x0, int y0, int x1, int y1) {
 	}
 }
 
-Rectangle winrec = (Rectangle){
+static Rectangle winrec = (Rectangle){
 	0, 100,
 	400, 110
 };
@@ -102,7 +102,7 @@ static const char* tabs[] = {
 	"world",
 	"pallete",
 	"stats",
-	"profiler",
+	"tools",
 	NULL
 };
 
@@ -210,57 +210,6 @@ static void drawPallete(Rectangle rec) {
 }
 
 
-void drawProfiler(Rectangle rec);
-void debugRender(Rectangle rec);
-void debugAllocator(Rectangle rec);
-static int  active_stat = 0;
-static int  active_hash = 0;
-
-#include "implix.h"
-
-static bool collides(struct chunk* o, int32_t x, int32_t y, int32_t x2, int32_t y2) {
-	return (
-		(int32_t)o->pos.axis[0] <= x2 &&
-    (int32_t)o->pos.axis[0] >= x  &&
-    (int32_t)o->pos.axis[1] <= y2 &&
-    (int32_t)o->pos.axis[1] >= y
-	);
-}
-
-#define swap(a, b) {do {int t = a; a = b; b = t;} while(0);}
-
-void debugHash(Rectangle rec) {
-	int64_t x0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).x)/ CHUNK_WIDTH - 1;
-	int64_t x1 = (GetScreenToWorld2D((Vector2){GetScreenWidth(), 0}, cam).x) / CHUNK_WIDTH;
-	int64_t y0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).y) / CHUNK_WIDTH - 1;
-	int64_t y1 = (GetScreenToWorld2D((Vector2){0, GetScreenHeight()}, cam).y) / CHUNK_WIDTH;
-	if (x1 < x0) swap(x1, x0);
-	if (y1 < y0) swap(y1, y0);	
-
-
-	Rectangle item = {rec.x, rec.y-20, 50, 20};
-	active_hash = GuiToggleGroup(item, "Map;Load;Save;Update", active_hash);
-
-	struct chunkmap* m = NULL;
-	if (active_hash == 0) m = &World.map;
-	else if (active_hash == 1) m = &World.load;
-	else if (active_hash == 2) m = &World.save;
-	else m = &World.update;
-
-	for (int i = 0; i < MAPLEN; i++) {
-		struct chunk *o = m->data[i];
-		int j = 0;
-		DrawPixel(rec.x + i, rec.y - 1, YELLOW);
-		while (o) {
-			DrawPixel(rec.x + i, rec.y + j,Fade(
-				collides(o, x0, y0, x1, y1) ? MAGENTA : BLUE, o->usagefactor/(float)CHUNK_USAGE_VALUE));
-			if (m->g) o = o->next;
-			else o = o->next2;
-			j++;	
-		}
-	}
-}
-
 static void drawStats(Rectangle rec) {
 	Rectangle item = (Rectangle){
 		rec.x, rec.y,
@@ -281,26 +230,19 @@ static void drawStats(Rectangle rec) {
 		(World.playtime/60)%60,
 		World.playtime%60)
 	);
-	int oldx = item.x;
-	int oldw = item.width;
-	item.x += 200;
-	item.width -= 300;
-	item.height += 10;
-	active_stat = GuiToggleGroup(item, "Hash;Render;Allocator", active_stat);
-	item.x = oldx;
-	item.width = oldw; 
-	item.y += item.height + 5;
-
-	rec.height = rec.y + rec.height - item.y;
-	rec.y = item.y;
-	if (active_stat == 2) debugAllocator(rec);
-	else if (active_stat == 1) debugRender(rec);
-	else debugHash(rec);
 }
 
 extern struct screen ScrSaveProc;
 
 void drawToolkit() {
+	int ignore = GuiIsLocked();
+	if (!ignore) {
+		GuiLock();
+		if (CheckCollisionPointRec(GetMousePosition(), winrec)) {
+			GuiUnlock();
+		}
+	}
+
 	GuiPanel(winrec, TextFormat("[PIXELBOX] (%i FPS)", (int)GetFPS()));
 	Rectangle rec = (Rectangle) { // Hide button rectangle
 		winrec.x + winrec.width - 20, winrec.y + 2,
@@ -323,8 +265,11 @@ void drawToolkit() {
 		""
 	);
 
-	if (window_hidden) return; // :)
-	
+	if (window_hidden) {
+		if (!ignore) GuiUnlock();
+		return; // :)
+	}
+
 	// content rectangle
 	rec = (Rectangle) {
 		winrec.x, winrec.y + 25,
@@ -372,12 +317,13 @@ void drawToolkit() {
 			drawStats(rec);
 		}; break;
 		case 3 :
-			drawProfiler(rec);
+
 		break;
 		default :
 			
 		break;
 	}
+	if (!ignore) GuiUnlock();
 }
 
 static double old_time = 0.0;
@@ -385,6 +331,7 @@ static double old_time = 0.0;
 bool updateToolkit() { 
 	float dt = GetTime() - old_time;
 	old_time = GetTime();
+
 	rainbow_v += rainbow_speed * dt;
 	if (rainbow_v > 1000) rainbow_v = -1000;
 
@@ -392,10 +339,7 @@ bool updateToolkit() {
 		0, GetScreenHeight() - (window_hidden ? 25 : 200),
 		400, (window_hidden ? 25 : 205)
 	};
-	GuiLock();
 	if (CheckCollisionPointRec(GetMousePosition(), winrec)) {
-		// gui
-		GuiUnlock();
 		return true;
 	}
 	return false;
