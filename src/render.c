@@ -305,7 +305,7 @@ void updateRender(Camera2D cam) {
 			if (!o) {
 				DrawRectangleRec(
 					(Rectangle){rx, ry, CHUNK_WIDTH, CHUNK_WIDTH},
-					getPixelColor(10)//softGenerate(x, y))
+					getPixelColor(softGenerate(x, y))
 				);
 				continue;
 			} 

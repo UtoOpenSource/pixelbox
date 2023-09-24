@@ -1,3 +1,9 @@
 INCS  := -I./src/ -I./src/libs
-FLAGS := -Og -fsanitize=address
+FLAGS := -O2 
 LFLAGS := -g
+
+all: pixelbox
+
+# generate asset archive :D
+./src/archive-generated.c : ./tools/archiver
+	./tools/archiver assets/* > ./src/archive-generated.c

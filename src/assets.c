@@ -43,9 +43,69 @@ static Texture errorTexture;
 
 #include "img_error.h"
 
+// DEFLATE'd!
+extern const struct archive_node {
+	const char* name;
+	const long unsigned int length;
+	const unsigned char* value;
+} __main_arcive[];
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#define TRACELOG(...) TraceLog(__VA_ARGS__);
+
+static uint8_t* loadFile(const char* fn, unsigned int *cnt) {
+	for(const struct archive_node* n = __main_arcive; n->name; n++) {
+		if (strcmp(fn, n->name) == 0) {
+			//char* copy = malloc(n->length+1);
+			//if (!copy) return NULL;
+			//memcpy(copy, n->value, n->length);
+			int ressize = 0;
+			uint8_t* res = DecompressData((uint8_t*)n->value, n->length, &ressize);
+			*cnt = ressize;
+			return res;
+		}
+	}
+	// else
+	// taken form raylib, else i will actually write same stuff...
+	FILE *file = fopen(fn, "rb");
+	char* data = NULL;
+
+	if (file != NULL) {
+		fseek(file, 0, SEEK_END);
+		int size = ftell(file);
+		fseek(file, 0, SEEK_SET);
+		if (size > 0) {
+			data = (unsigned char *)malloc(size+1);
+			long int count = fread(data, sizeof(unsigned char), size, file);
+			*cnt = count;
+		} else TRACELOG(LOG_WARNING, "Failed to read file %s", fn);
+		fclose(file);
+	}
+	else TRACELOG(LOG_WARNING, "Failed to open file %s", fn);
+	*cnt = 0;
+	return NULL;
+}
+
+static char* loadFileT(const char* fn) {
+	unsigned int cnt = 0;
+	uint8_t* dat = loadFile(fn, &cnt);
+	// check for trailing zero
+	if (dat && dat[cnt] != 0) {
+		dat[cnt] = 0;
+	}
+	return (char*)dat; // i don't care...
+}
+
 void initAssetSystem() {
 	for (int i = 0; i < HASH_LEN; i++)
 		ASSET_MAP[i] = NULL; 
+
+	SetLoadFileDataCallback(loadFile);
+	SetLoadFileTextCallback(loadFileT);
 
 	Image err = (Image) {
 		.data = img_error_data, 

@@ -206,7 +206,7 @@ bool updateChunk(struct chunk* c, const int stage) {
 
 #define TPS 64
 #define MIN_TICK (1.0/(double)TPS)
-#define MAX_STAGES 7
+#define MAX_STAGES 3
 static double old_time = 0.0;
 
 void updateWorld(void) {

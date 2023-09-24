@@ -58,7 +58,7 @@ static void draw() {
 
 	Rectangle item = {rec.x, rec.y, 100, 100};
 	item.x += rec.width/2 - 50 - 70;
-	GuiAssetTexture(item, LookupAssetID("icon.png"));
+	GuiAssetTexture(item, LookupAssetID("assets/icon.png"));
 	item.x += 105;
 	item.width = 140;
 	GuiLabel(item, TextFormat("Pixelbox v.%s\n%s%s",

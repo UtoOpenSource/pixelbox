@@ -1,4 +1,4 @@
-.PHONY: kisspixel.exe clean
+.PHONY: pixelbox clean
 
 include makecfg
 
@@ -7,7 +7,9 @@ OBJS := $(SRCS:./src/%.c=./wbin/%.o)
 FLAGS += 
 CC := x86_64-w64-mingw32-gcc 
 
-kisspixel.exe : $(OBJS)
+pixelbox: pixelbox.exe
+
+pixelbox.exe : $(OBJS)
 	$(CC) $^ libraylib.a -o $@  $(LFLAGS) -static -static-libgcc -lm -lgdi32 -lwinmm -lpthread $(FLAGS)
 
 ./wbin/%.o : ./src/%.c
