@@ -216,8 +216,28 @@ void debugAllocator(Rectangle rec);
 static int  active_stat = 0;
 static int  active_hash = 0;
 
+#include "implix.h"
+
+static bool collides(struct chunk* o, int32_t x, int32_t y, int32_t x2, int32_t y2) {
+	return (
+		(int32_t)o->pos.axis[0] <= x2 &&
+    (int32_t)o->pos.axis[0] >= x  &&
+    (int32_t)o->pos.axis[1] <= y2 &&
+    (int32_t)o->pos.axis[1] >= y
+	);
+}
+
+#define swap(a, b) {do {int t = a; a = b; b = t;} while(0);}
+
 void debugHash(Rectangle rec) {
-		
+	int64_t x0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).x)/ CHUNK_WIDTH - 1;
+	int64_t x1 = (GetScreenToWorld2D((Vector2){GetScreenWidth(), 0}, cam).x) / CHUNK_WIDTH;
+	int64_t y0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).y) / CHUNK_WIDTH - 1;
+	int64_t y1 = (GetScreenToWorld2D((Vector2){0, GetScreenHeight()}, cam).y) / CHUNK_WIDTH;
+	if (x1 < x0) swap(x1, x0);
+	if (y1 < y0) swap(y1, y0);	
+
+
 	Rectangle item = {rec.x, rec.y-20, 50, 20};
 	active_hash = GuiToggleGroup(item, "Map;Load;Save;Update", active_hash);
 
@@ -231,19 +251,12 @@ void debugHash(Rectangle rec) {
 		struct chunk *o = m->data[i];
 		int j = 0;
 		DrawPixel(rec.x + i, rec.y - 1, YELLOW);
-		if (m->g) {
-			assert(active_hash == 0);
-			while (o) {
-				DrawPixel(rec.x + i, rec.y + j, MAGENTA);
-				o = o->next;
-				j++;
-			}
-		} else {
-			while (o) {
-				DrawPixel(rec.x + i, rec.y + j, PINK);
-				o = o->next2;
-				j++;
-			}
+		while (o) {
+			DrawPixel(rec.x + i, rec.y + j,Fade(
+				collides(o, x0, y0, x1, y1) ? MAGENTA : BLUE, o->usagefactor/(float)CHUNK_USAGE_VALUE));
+			if (m->g) o = o->next;
+			else o = o->next2;
+			j++;	
 		}
 	}
 }

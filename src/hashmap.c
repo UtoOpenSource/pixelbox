@@ -70,6 +70,8 @@ void collectAnything (void) {
 	}
 }
 
+#include <assert.h>
+
 int collectGarbage (void) {
 	int limit = 0;
 
@@ -78,7 +80,7 @@ int collectGarbage (void) {
 		struct chunk *c = World.map.data[i], *old = NULL;
 		while (c) {
 			if (c->usagefactor >= 0) c->usagefactor--;
-			if (c->usagefactor < 0 && limit < GC_LIMIT_PER_TICK) { // REMOVE AND COLLECT
+			if (c->usagefactor < 0) { // REMOVE AND COLLECT
 				struct chunk* f = c;
 				if (old) old->next = c->next; // remove
 				else World.map.data[i] = c->next; // remove
@@ -96,11 +98,13 @@ int collectGarbage (void) {
 
 	limit = 0;
 	// collect load
+
 	for (int i = 0; i < MAPLEN; i++) {
+		assert(!World.load.g);
 		struct chunk *c = World.load.data[i], *old = NULL;
 		while (c) {
-			if (c->usagefactor > 0) c->usagefactor--;
-			if (c->usagefactor <= 0 && limit < GC_LIMIT_PER_TICK) { // REMOVE AND COLLECT
+			if (c->usagefactor >= 0) c->usagefactor--;
+			if (c->usagefactor < 0) { // REMOVE AND COLLECT
 				struct chunk* f = c;
 				// next2, since load is minor hashmap!
 				if (old) old->next2 = c->next2; // remove
@@ -111,7 +115,7 @@ int collectGarbage (void) {
 				limit++;
 			} else {
 				old = c;
-				c = c->next;
+				c = c->next2;
 			}
 		}
 		// OK

@@ -125,6 +125,9 @@ struct chunk* markWorldUpdate(int64_t x, int64_t y) {
 	return ch;
 }
 
+//#include <execinfo.h>
+#include <stdlib.h>
+
 // noinline!
 static struct chunk* slow_loading_path(int16_t x, int16_t y) {
 	struct chunk* c;
@@ -134,11 +137,25 @@ static struct chunk* slow_loading_path(int16_t x, int16_t y) {
 	if (c) {
 		empty.pos.axis[0] = x;
 		empty.pos.axis[1] = y;
+
+#if 0
+		void* buffer[512];
+		int cnt = backtrace(buffer, 512);
+		char** symbols = backtrace_symbols(buffer, cnt);
+		puts("STACKTRACE:");
+		for (char** s = symbols; *s != NULL && s - symbols < cnt; s++) {
+			puts(*s);
+		}
+		free(symbols); 
+#endif
+
+
 		c->usagefactor = CHUNK_USAGE_VALUE; // 'cause GC will work on loaded chunks
+		
 		return &empty;
 	}
 
-	// if saving...
+	// if saving - stop it!
 	c = findChunk(&World.save, x, y);
 	if (c) {
 		c->usagefactor = CHUNK_USAGE_VALUE;

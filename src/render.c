@@ -225,7 +225,8 @@ static void collectItems(int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
 		struct gitem *o = Builder.map[i];
 		while (o) {
 			assert(o->used && "render hashmap corrupted!");
-			if (!collides(o, x0, y0, x1, y1)) {
+			// DEBUG
+			if (!collides(o, x0, y0, x1, y1) || IsKeyDown(KEY_H)) {
 				 o = removeItem(o); // hehe
 			}
 			else o = o->next;
@@ -260,14 +261,13 @@ static struct gitem* getItem(union packpos pos) {
 
 	struct chunk* c;
 
-	o = newItem(pos);
-	if (!o) return NULL; // should not happen
-
 	c = getWorldChunk(pos.axis[0], pos.axis[1]);
 	if (c == &empty) { // oh man...
-		removeItem(o);
 		return NULL;
 	}
+
+	o = newItem(pos);
+	if (!o) return NULL; // should not happen
 
 	updateData((int)(o - Builder.items), c);
 	return o;
@@ -295,9 +295,11 @@ void updateRender(Camera2D cam) {
 			union packpos pos;
 			pos.axis[0] = x;
 			pos.axis[1] = y;
-			struct gitem* o;
+			struct gitem* o = NULL;
 
-			o = getItem(pos);
+			// DEBUG
+			if (!IsKeyDown(KEY_H))
+				o = getItem(pos);
 			
 			float rx = x * CHUNK_WIDTH;
 			float ry = y * CHUNK_WIDTH;
@@ -305,7 +307,7 @@ void updateRender(Camera2D cam) {
 			if (!o) {
 				DrawRectangleRec(
 					(Rectangle){rx, ry, CHUNK_WIDTH, CHUNK_WIDTH},
-					getPixelColor(softGenerate(x, y))
+					getPixelColor(10)//softGenerate(x, y))
 				);
 				continue;
 			} 
@@ -321,6 +323,7 @@ void updateRender(Camera2D cam) {
 			int i = (int)(o - Builder.items);
 			int x = i % BUILDERWIDTH;
 			int y = i / BUILDERWIDTH;
+			assert(collides(o, x0, y0, x1, y1));
 			DrawTextureRec(
 					Builder.texture,
 					(Rectangle) {

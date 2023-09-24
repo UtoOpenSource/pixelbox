@@ -302,7 +302,7 @@ bool saveloadTick() {
 			m->data[load_i] = n;
 			done_something = true;
 
-			assert(c->usagefactor > 0); // should be true
+			assert(c->usagefactor >= 0); // should be true
 
 			if (loadChunk(c) <= 0) {
 				generateChunk(c);

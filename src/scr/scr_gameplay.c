@@ -164,7 +164,7 @@ static void update() {
 	prof_end(PROF_UPDATE);
 
 	prof_begin(PROF_LOAD_SAVE);
-	saveloadTick(); // done in
+	if (!IsKeyDown(KEY_F)) saveloadTick(); // done in
 	prof_end();
 
 	prof_begin(PROF_GC);

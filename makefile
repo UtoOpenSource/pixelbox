@@ -7,7 +7,7 @@ OBJS := $(SRCS:./src/%.c=./bin/%.o)
 FLAGS +=  
 
 pixelbox : $(OBJS)
-	$(CC) $^ -o $@ $(LFLAGS) -lm -lpthread -lraylib $(FLAGS)
+	$(CC) $^ -o $@ $(LFLAGS) -lm -lpthread -lraylib -rdynamic $(FLAGS)
 
 ./bin/%.o : ./src/%.c
 	mkdir -p $(dir $@)

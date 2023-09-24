@@ -132,8 +132,8 @@ static struct prof_thread* getctx() {
 typedef struct prof_thread* ctx_t;
 
 #define GETCTX() ctx_t x = getctx();
-#define LOCK()   c89mtx_lock(&x->mutex)
-#define UNLOCK() c89mtx_unlock(&x->mutex)
+#define LOCK()   //c89mtx_lock(&x->mutex)
+#define UNLOCK() //c89mtx_unlock(&x->mutex)
 
 static inline void push(ctx_t x, int i, double time) {
 	x->stackpos++;
