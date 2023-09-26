@@ -51,20 +51,78 @@ static void destroy() {
 
 static Vector2 scroll = {0, 0};
 
+static const char* tabs[] = {
+	"about",
+	"license",
+	"resources",
+	"GNU GPL",
+	NULL
+};
+
+static int active_tab = 0;
+
+#include "assets.h"
+
+float getStringHeight(const char* str);
+
+static float getHeight() {
+	switch(active_tab) {
+		case 0: return 350;
+		case 1: return 350;
+		case 2: return 50;
+		case 3: {
+			AssetID a = LookupAssetID("assets/license.txt");
+			return getStringHeight(GetStringAsset(a));
+		};
+	}
+	return 350;
+}
+
 static void draw() {
 	Rectangle rec = GuiMenuWindow("License");
-	rec.height -= 10;
-	Rectangle con = {0, 0, 400, 350};
+	rec.height -= 30;
+	Rectangle bar = {rec.x, rec.y, rec.width, 20};
+
+	GuiTabBarEx(bar, 100, 0, tabs, 4, &active_tab);
+
+	rec.y += 20;
+	Rectangle con = {0, 0, rec.width > 400 ? rec.width : 400, getHeight()};
+
 	Rectangle out = GuiScrollPanel(rec, NULL, con, &scroll);
 	BeginScissorMode(out.x, out.y, out.width, out.height);
 	con.y = out.y + scroll.y;
 	con.x = out.x + scroll.x;
-	GuiTextView(con, license);
-	con.y += con.height - 40;
-	con.height = 20;
-	con.width  = con.width / 2 - 5;
-	if (GuiButton(con, "Get Source Code")) {
-		OpenURL("https://github.com/UtoECat/pixelbox");
+	switch (active_tab) {
+		case 0: {
+			Rectangle item = {con.x, con.y, 200, 200};
+			item.x += con.width/2 - 100;
+			GuiAssetTexture(item, LookupAssetID("assets/shit_maker.png"));
+			item.y += item.height + 5;
+			item.x = con.x;
+			item.height = 20;
+			item.width = con.width;
+			int old = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
+			GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
+			GuiLabel(item, "By UtoECat");
+			GuiSetStyle(LABEL, TEXT_ALIGNMENT, old);
+			item.y += item.height;
+		};
+		break;
+		case 1:
+		GuiTextView(con, license);
+		break;
+		case 2:
+			con.y += con.height - 40;
+			con.height = 20;
+			con.width  = con.width / 2 - 5;
+			if (GuiButton(con, "Get Source Code")) {
+				OpenURL("https://github.com/UtoECat/pixelbox");
+			}
+		break;
+		case 3:
+			AssetID a = LookupAssetID("assets/license.txt");
+			GuiTextView(con, GetStringAsset(a));
+		break;
 	}
 	EndScissorMode();
 }
