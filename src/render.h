@@ -19,10 +19,10 @@
 #pragma once
 #include "pbapi.h"
 
-void InitChunkAllocator();
-void FreeChunkAllocator();
+void InitCRBuilder();
+void FreeCRBuilder();
+void FlushCRCache();
+int  RenderCRChunk(struct chunk* c);
 
-struct chunk* allocChunk(int16_t x, int16_t y);
-void freeChunk(struct chunk* orig);
-
-uint64_t      GetMemoryUsage(); // not accurate
+struct Color {unsigned char r, g, b, a;};
+struct Color GetPixelColor(uint8_t type, uint8_t data);

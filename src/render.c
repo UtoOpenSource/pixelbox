@@ -214,7 +214,7 @@ static void updateData(int index, struct chunk* c) {
 			y*CHUNK_WIDTH,
 			CHUNK_WIDTH, CHUNK_WIDTH
 		},
-		getChunkData(c, MODE_READ)
+		getChunkAtoms(c, MODE_READ)->types
 	);
 }
 

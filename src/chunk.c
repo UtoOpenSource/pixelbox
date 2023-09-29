@@ -21,8 +21,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-uint8_t* getChunkData(struct chunk* c, const bool mode) {
-	return c->atoms + (mode == c->wIndex ? CHUNK_WIDTH*CHUNK_WIDTH : 0);
+struct atoms* getChunkAtoms(struct chunk* c, const bool mode) {
+	return c->buffers + (mode == c->wIndex ? CHUNK_WIDTH*CHUNK_WIDTH : 0);
 }
 
 #include <string.h>
@@ -105,8 +105,9 @@ uint8_t softGenerate(int16_t ox, int16_t oy) {
 
 void generateChunk(struct chunk* c) {
 	prof_begin(PROF_GENERATOR);
+	struct atoms* a = getChunkAtoms(c, MODE_READ);
 
-	uint8_t* data = getChunkData(c, MODE_READ);
+	uint8_t* data = a->data;
 	uint8_t (*generator)(int32_t x, int32_t y);
 
 	if (World.mode < 0) generator = generators[1];

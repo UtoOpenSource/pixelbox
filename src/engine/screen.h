@@ -16,14 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>
  */
 
-#define ABS(x) (((x) >= 0) ? (x) : -(x))
-
-void initBuilder();
-void freeBuilder();
-void flushChunksCache();
-int  renderChunk(struct chunk* c);
-
-extern Camera2D cam;
+#pragma once
 
 struct screen {
 	struct screen* back;
@@ -43,17 +36,9 @@ void SetNextScreen(struct screen*); // and sets as current
 void SetRootScreen(struct screen*); // => sets as current. Cleanups stack
  int SetPrevScreen(struct screen*); // fallback screen in arg if no more screen in stack exist!
 
+int  UpdateScreenSystem(void);
+
 Rectangle GuiMenuWindow(const char* title);
 int GuiTextView(Rectangle rec, const char* src);
 
-void WorldRefCreate();
-void WorldRefDestroy();
-
 int GuiTabBarEx(Rectangle bounds, int width, int closeable, const char **text, int count, int *active);
-int GuiTextView(Rectangle rec, const char* src);
-
-extern bool game_working;
-
-Color getPixelColor(uint8_t p);
-
-#include "version.h"

@@ -1,11 +1,11 @@
 #pragma once
 #define PBOX_VERSION_MAJOR 0
-#define PBOX_VERSION_MINOR 7
+#define PBOX_VERSION_MINOR 8
 #define PBOX_VERSION_PATCH 0
 
 #ifndef PIXELBOX_DEBUG
 #define PIXELBOX_DEBUG 1
 #endif
 
-#define PBOX_NUMERIC_VERSION 70
-#define PBOX_VERSION "0.7.0"
+#define PBOX_NUMERIC_VERSION 80
+#define PBOX_VERSION "0.8.0"

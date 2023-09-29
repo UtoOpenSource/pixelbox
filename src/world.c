@@ -24,6 +24,15 @@ struct worldState World;
 #include <string.h>
 #include <time.h>
 
+void setWorldSeed(int64_t seed) {
+	World.seed = seed;
+	World.rngstate = 0;
+	nextState();
+	World.rngstate += seed;
+	nextState();
+	randomizeNoise();
+}
+
 int initWorld(void) {
 	World.database = NULL;
 	setWorldSeed(time(NULL));
@@ -91,7 +100,9 @@ void setWorldPixel(int64_t x, int64_t y, uint8_t val, bool mode) {
 	int ax = (uint64_t)x%CHUNK_WIDTH;
 	int ay = (uint64_t)y%CHUNK_WIDTH;
 	ch->is_changed = 1; // yeah...
-	getChunkData(ch, mode)[ax + ay * CHUNK_WIDTH] = val;	
+	struct atoms* a = getChunkAtoms(ch, mode);	
+	a->types[ax + ay * CHUNK_WIDTH] = val;
+	a->data [ax + ay * CHUNK_WIDTH] = 0;
 }
 
 uint8_t getWorldPixel(int64_t x, int64_t y, bool mode) {
@@ -101,7 +112,7 @@ uint8_t getWorldPixel(int64_t x, int64_t y, bool mode) {
 	ch = getWorldChunk(cx, cy);
 	int ax = (uint64_t)x%CHUNK_WIDTH;
 	int ay = (uint64_t)y%CHUNK_WIDTH;
-	return getChunkData(ch, mode)[ax + ay * CHUNK_WIDTH];	
+	return getChunkAtoms(ch, mode)->types[ax + ay * CHUNK_WIDTH];	
 }
 
 struct chunk empty = {0};
@@ -125,7 +136,6 @@ struct chunk* markWorldUpdate(int64_t x, int64_t y) {
 	return ch;
 }
 
-//#include <execinfo.h>
 #include <stdlib.h>
 
 // noinline!
@@ -137,21 +147,7 @@ static struct chunk* slow_loading_path(int16_t x, int16_t y) {
 	if (c) {
 		empty.pos.axis[0] = x;
 		empty.pos.axis[1] = y;
-
-#if 0
-		void* buffer[512];
-		int cnt = backtrace(buffer, 512);
-		char** symbols = backtrace_symbols(buffer, cnt);
-		puts("STACKTRACE:");
-		for (char** s = symbols; *s != NULL && s - symbols < cnt; s++) {
-			puts(*s);
-		}
-		free(symbols); 
-#endif
-
-
-		c->usagefactor = CHUNK_USAGE_VALUE; // 'cause GC will work on loaded chunks
-		
+		c->usagefactor = CHUNK_USAGE_VALUE;
 		return &empty;
 	}
 

@@ -1,5 +1,6 @@
 // see pixelbox.h for copyright notice and license.
-#include "implix.h"
+#include "hashmap.h"
+#include "pbint.h"
 #include <stdlib.h>
 
 static inline struct chunk** next(struct chunk* c, bool g) {

@@ -19,10 +19,9 @@
 #pragma once
 #include "pbapi.h"
 
-void InitChunkAllocator();
-void FreeChunkAllocator();
-
-struct chunk* allocChunk(int16_t x, int16_t y);
-void freeChunk(struct chunk* orig);
-
-uint64_t      GetMemoryUsage(); // not accurate
+int  hashInit(struct chunkmap* m);
+void hashFree(struct chunkmap* m);
+int  hashResize(struct chunkmap* m, unsigned int logsize); 
+struct chunk* hashFind(struct chunkmap* m, int16_t x, int16_t y); 
+void          hashInsert(struct chunkmap* m, struct chunk* c); 
+struct chunk* hashRemove(struct chunkmap* m, struct chunk* c); 

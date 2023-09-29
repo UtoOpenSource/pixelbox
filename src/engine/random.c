@@ -1,7 +1,6 @@
 /* 
  * Comtains a lot of thirdparty MIT Licensed/Public domain code
  */
-#include "pixel.h"
 
 /*
  * Original random generator was taken from Luau programming language
@@ -28,9 +27,13 @@
  * SOFTWARE. 
  */
 
+#include "random.h"
+
+static uint64_t rngstate = 0;
+
 static uint64_t nextState() {
-	int64_t old = World.rngstate;
-	World.rngstate = old * 6364136223846793005ULL + (105 | 1);
+	int64_t old = rngstate;
+	rngstate = old * 6364136223846793005ULL + (105 | 1);
 	return old;
 }
 
@@ -41,16 +44,7 @@ int32_t randomNumber(void) {
 	return (sft >> rot) | (sft << ((-(int32_t)rot) & 31));
 }
 
-static void randomizeNoise(); // RESTORES old rng state!
-
-void setWorldSeed(int64_t seed) {
-	World.seed = seed;
-	World.rngstate = 0;
-	nextState();
-	World.rngstate += seed;
-	nextState();
-	randomizeNoise();
-}
+void randomizeNoise(); // RESTORES old rng state!
 
 /*
  * END OF MIT-LICENSED CODE!!!!
@@ -121,9 +115,9 @@ static unsigned char perm[] = {151,160,137,91,90,15,
   138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
 };
 
-static void randomizeNoise() { // my extension
+void randomizeNoise() { // my extension
 	bool done[256] = {0};
-	uint64_t old = World.rngstate;
+	uint64_t old = rngstate;
 
 	for (int i = 0; i < 256; i++) {
 		uint8_t val = randomNumber();
@@ -134,7 +128,7 @@ static void randomizeNoise() { // my extension
 		perm[i + 256] = val;
 		done[val] = true;
 	}
-	World.rngstate = old; // restore old state
+	rngstate = old; // restore old state
 }
 
 //---------------------------------------------------------------------

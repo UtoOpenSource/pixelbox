@@ -15,16 +15,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>
  */
-
 #pragma once
+#include <stdint.h>
 
-#include <stdbool.h>
+int32_t randomNumber(void);
+void    randomizeNoise();
 
-extern bool  conf_vsync;
-extern int   conf_max_fps;
-extern int   conf_win_width;
-extern int   conf_win_height;
-extern bool  conf_debug_mode;
+float grad1(int hash, float x);
+float grad2(int hash, float x, float y);
 
-void reloadSettings();
-void saveSattings();
+float noise1(float x);
+float pnoise1(float x, int px);
+float noise2(float x, float y);
+float pnoise2(float x, float y, int px, int py);

@@ -16,16 +16,22 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>
  */
 
-#include <raylib.h>
+#pragma once
 
-void initAssetSystem();
-void freeAssetSystem();
-void collectAssets();
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include "assets.h"
+#include "profiler.h"
+#include "settings.h"
+#include "screen.h"
+#include "random.h"
+#include "raygui.h"
 
-typedef unsigned int AssetID;
+void _StopEngine();
 
-AssetID LookupAssetID(const char* name);
-Texture GetTextureAsset(AssetID id);
-const char* GetStringAsset(AssetID id);
+void _InitEngine();
+void _FreeEngine();
 
-void GuiAssetTexture(Rectangle rec, AssetID id);
+void GlobalEngineEntryPoint();

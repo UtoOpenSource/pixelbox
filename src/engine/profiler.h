@@ -17,8 +17,6 @@
  */
 
 #pragma once
-#include <raylib.h>
-
 #define PROF_HISTORY_LEN 255
 
 /*

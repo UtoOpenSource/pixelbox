@@ -16,13 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>
  */
 
-#include "raygui.h"
-#include "pixel.h"
-#include "game.h"
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include "profiler.h"
+#include "engine.h"
 
 static Rectangle dwinrec = (Rectangle){
 	0, 100,
@@ -38,70 +32,6 @@ void initDToolkit() {
 
 void freeDToolkit() {
 
-}
-
-static const char* tabs[] = {
-	"profiler",
-	"hashtable",
-	"rendering",
-	"allocator",
-	"control",
-	NULL
-};
-
-static int active_tab = 1;
-static int active_hash = 0;
-static int window_hidden = 1;
-
-void drawProfiler(Rectangle rec);
-void debugRender(Rectangle rec);
-void debugAllocator(Rectangle rec);
-
-#include "implix.h"
-
-static bool collides(struct chunk* o, int32_t x, int32_t y, int32_t x2, int32_t y2) {
-	return (
-		(int32_t)o->pos.axis[0] <= x2 &&
-    (int32_t)o->pos.axis[0] >= x  &&
-    (int32_t)o->pos.axis[1] <= y2 &&
-    (int32_t)o->pos.axis[1] >= y
-	);
-}
-
-#define swap(a, b) {do {int t = a; a = b; b = t;} while(0);}
-
-void debugHash(Rectangle rec) {
-	int64_t x0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).x)/ CHUNK_WIDTH - 1;
-	int64_t x1 = (GetScreenToWorld2D((Vector2){GetScreenWidth(), 0}, cam).x) / CHUNK_WIDTH;
-	int64_t y0 = (GetScreenToWorld2D((Vector2){0, 0}, cam).y) / CHUNK_WIDTH - 1;
-	int64_t y1 = (GetScreenToWorld2D((Vector2){0, GetScreenHeight()}, cam).y) / CHUNK_WIDTH;
-	if (x1 < x0) swap(x1, x0);
-	if (y1 < y0) swap(y1, y0);	
-
-
-	Rectangle item = {rec.x, rec.y, 50, 20};
-	active_hash = GuiToggleGroup(item, "Map;Load;Save;Update", active_hash);
-
-	rec.y += 25;
-
-	struct chunkmap* m = NULL;
-	if (active_hash == 0) m = &World.map;
-	else if (active_hash == 1) m = &World.load;
-	else if (active_hash == 2) m = &World.save;
-	else m = &World.update;
-
-	for (int i = 0; i < MAPLEN; i++) {
-		struct chunk *o = m->data[i];
-		int j = 0;
-		DrawPixel(rec.x + i, rec.y - 1, YELLOW);
-		while (o) {
-			DrawPixel(rec.x + i, rec.y + j,Fade(
-				collides(o, x0, y0, x1, y1) ? MAGENTA : BLUE, o->usagefactor/(float)CHUNK_USAGE_VALUE));
-			if (m->g) o = o->next;
-			else o = o->next2;
-			j++;	
-		}
-	}
 }
 
 static void controlTab(Rectangle rec) {
@@ -149,31 +79,6 @@ void drawDToolkit() {
 
 	int old = rec.height;
 	rec.height = 20;
-	GuiTabBarEx(rec, 80, false, tabs, 5, &active_tab);
-	rec.y += 25;
-	rec.height = old - 25;
-	rec.x += 5;
-	rec.width -= 5;
-
-	switch(active_tab) {
-		case 0 :
-			drawProfiler(rec);
-		break;
-		case 1 :
-			if (safeWorld()) debugHash(rec);
-		break;
-		case 2:
-			if (safeWorld()) debugRender(rec);
-		break;
-		case 3 :
-			debugAllocator(rec);
-		break;
-		case 4:
-			controlTab(rec);
-		break;
-		default :	
-		break;
-	}
 	GuiUnlock();
 }
 

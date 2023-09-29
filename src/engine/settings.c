@@ -70,3 +70,8 @@ void saveSattings() {
 	WRITE(conf_debug_mode);
 	if (F) fclose(F);
 }
+
+void refreshSettings() {
+	conf_win_width = GetScreenWidth();
+	conf_win_height = GetScreenHeight();
+}

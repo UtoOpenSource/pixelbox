@@ -36,6 +36,7 @@ const char* prof_entries_names[] = {
 
 static c89mtx_t prof_threads_mutex;
 
+#include <raylib.h>
 double prof_clock() {
 	return GetTime();
 }

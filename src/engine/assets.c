@@ -23,7 +23,7 @@ enum {
 	ASSET_NULL,
 	ASSET_STRING,
 	ASSET_TEXTURE,
-	ASSET_AUDIO
+	ASSET_WAVE
 };
 
 #define USAGE_TIMEOUT 200
@@ -33,6 +33,7 @@ struct AssetNode {
 	int type; int usage;
 	union {
 		Texture texture;
+		Wave    wave;
 		char    string[1];
 	} data;
 };
@@ -40,6 +41,8 @@ struct AssetNode {
 #define HASH_LEN 64
 static struct AssetNode* ASSET_MAP[HASH_LEN];
 static Texture errorTexture;
+static Wave errorWave;
+static char null_data[128] = {0};
 
 #include "img_error.h"
 
@@ -115,12 +118,18 @@ void initAssetSystem() {
 		.height = img_error_height
 	};
 	errorTexture = LoadTextureFromImage(err);
+	errorWave = (Wave) {
+		1, 1, 8, 1, null_data
+	};
 }
 
 static void free_node(struct AssetNode* n) {
 	switch(n->type) {
 		case ASSET_TEXTURE :
 			UnloadTexture(n->data.texture);
+		break;
+		case ASSET_WAVE :
+			UnloadWave(n->data.wave);
 		break;
 		default :
 		break;
@@ -137,6 +146,8 @@ static struct _FileType {
 	{"bmp", ASSET_TEXTURE},
 	{"jpg", ASSET_TEXTURE},
 	{"gif", ASSET_TEXTURE},
+	{"wav", ASSET_WAVE},
+	{"ogg", ASSET_WAVE},
 	{"", ASSET_NULL}
 };
 
@@ -231,6 +242,22 @@ static struct AssetNode* new_node(const char* path) {
 			node->type = ASSET_TEXTURE;
 			node->data.texture = texture;
 		} break;
+		case ASSET_WAVE : {
+			prof_begin(PROF_DISK);
+			Wave wave = LoadWave(path);
+			prof_end();
+
+			if (!IsWaveReady(wave)) break;
+			
+			node = calloc(sizeof(struct AssetNode), 1);
+			if (!node) {
+				UnloadWave(wave);
+				break;
+			}
+
+			node->type = ASSET_WAVE;
+			node->data.wave = wave;
+		} break;
 	};
 
 	if (!node) {
@@ -243,7 +270,9 @@ static struct AssetNode* new_node(const char* path) {
 	return node;
 }
 
+static void UnloadSounds();
 void freeAssetSystem() {
+	UnloadSounds();
 	for (int i = 0; i < HASH_LEN; i++) {
 		struct AssetNode* n = ASSET_MAP[i];
 		while (n) {
@@ -338,4 +367,85 @@ const char* GetStringAsset(AssetID id) {
 	if (!n || n->type != ASSET_STRING)
 		return "error";
 	return n->data.string;
+}
+
+Wave    GetWaveAsset(AssetID id) {
+	struct AssetNode* n = getNode(id);
+	if (!n || n->type != ASSET_WAVE)
+		return errorWave;
+	return n->data.wave;
+}
+
+
+#define SOUND_PULL_SIZE 20
+static Sound sound_pull[SOUND_PULL_SIZE] = {0};
+static int free_sound = 0;
+
+static void UnloadSounds() {
+	for (int i = 0; i < SOUND_PULL_SIZE; i++) {
+		if (IsSoundReady(sound_pull[i])) {
+			UnloadSound(sound_pull[i]);
+			sound_pull[i] = (Sound){0};
+		}
+	}
+
+	free_sound = 0;
+}
+
+static Sound* getSpace() {
+	for (int i = free_sound; i < SOUND_PULL_SIZE; i++) {
+		if (IsSoundReady(sound_pull[i])) {
+			if (!IsSoundPlaying(sound_pull[i])) {
+				UnloadSound(sound_pull[i]);
+				sound_pull[i] = (Sound){0};
+				free_sound = i + 1;
+				return sound_pull + i;
+			}	
+			free_sound++;
+			continue;
+		}	
+		return sound_pull + i;
+	}
+
+	// try to find expired sound
+	for (int i = 0; i < SOUND_PULL_SIZE; i++) {
+		if (IsSoundReady(sound_pull[i]) 
+				&& IsSoundPlaying(sound_pull[i])) continue;
+		// found!
+		UnloadSound(sound_pull[i]);
+		sound_pull[i] = (Sound){0};
+		free_sound = i + 1;
+		return sound_pull + i;
+	}
+
+	// no free sound :( remove old one
+	UnloadSound(sound_pull[0]);
+	for (int i = 0; i < SOUND_PULL_SIZE-1; i++) {
+		sound_pull[i] = sound_pull[i+1];
+	}
+	sound_pull[SOUND_PULL_SIZE-1] = (Sound){0};
+	return sound_pull + (SOUND_PULL_SIZE - 1);
+}
+
+void TakeCareSound(Sound sound) {
+	*getSpace() = sound;
+}
+
+Sound PlayAssetSound(AssetID id, float volume, float pitch) {
+	Sound snd = LoadSoundFromWave(GetWaveAsset(id));
+	assert(IsSoundReady(snd));
+	SetSoundVolume(snd, volume);
+	SetSoundPitch(snd, pitch);
+	PlaySound(snd);
+	TakeCareSound(snd);
+	return snd;
+}
+
+#include "raygui.h"
+
+void GuiAssetTexture(Rectangle rec, AssetID id) {
+	Texture tex = GetTextureAsset(id);
+
+	DrawTexturePro(tex, (Rectangle){0, 0, tex.width, tex.height}, 
+		rec, (Vector2){0, 0}, 0, WHITE);
 }

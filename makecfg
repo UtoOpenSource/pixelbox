@@ -1,5 +1,5 @@
-INCS  := -I./src/ -I./src/libs
-FLAGS := -O2 
+INCS  := -I./src/ -I./src/libs -I./src/engine
+FLAGS := -O2 -fanalyzer -Werror -flto
 LFLAGS := -g
 
 all: pixelbox

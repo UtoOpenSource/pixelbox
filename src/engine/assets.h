@@ -16,13 +16,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>
  */
 
-#pragma once
-#include "pbapi.h"
+#include <raylib.h>
 
-void InitChunkAllocator();
-void FreeChunkAllocator();
+void initAssetSystem();
+void freeAssetSystem();
+void collectAssets();
 
-struct chunk* allocChunk(int16_t x, int16_t y);
-void freeChunk(struct chunk* orig);
+typedef unsigned int AssetID;
 
-uint64_t      GetMemoryUsage(); // not accurate
+AssetID LookupAssetID(const char* name);
+Texture GetTextureAsset(AssetID id);
+const char* GetStringAsset(AssetID id);
+Wave    GetWaveAsset(AssetID id);
+
+void GuiAssetTexture(Rectangle rec, AssetID id);
+Sound PlayAssetSound(AssetID id, float volume, float pitch); // already takes care!
+void TakeCareSound(Sound sound); // take care of existent sound

@@ -177,7 +177,7 @@ int  loadChunk(struct chunk* c) {
 		while (statement_iterator(stmt) > 0) {
 			const uint8_t* data = (uint8_t*)sqlite3_column_blob(stmt, 0);
 			if (data) {
-				memcpy(getChunkData(c, false), data, CHUNK_WIDTH*CHUNK_WIDTH);
+				memcpy(getChunkAtoms(c, false), data, sizeof(struct atoms));
 				loaded = true;
 			}
 		}
@@ -195,7 +195,7 @@ sqlite3_stmt* stmt = create_statement(World.database,
 			return;
 		}
 		sqlite3_bind_int64(stmt, 1, c->pos.pack);
-		sqlite3_bind_blob(stmt, 2, getChunkData(c, MODE_READ), CHUNK_WIDTH*CHUNK_WIDTH, SQLITE_STATIC);
+		sqlite3_bind_blob(stmt, 2, getChunkAtoms(c, MODE_READ), sizeof(struct atoms), SQLITE_STATIC);
 		while (statement_iterator(stmt) > 0) {}
 		sqlite3_finalize(stmt);
 	}

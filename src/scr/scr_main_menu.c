@@ -16,9 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>
  */
 
-#include "raygui.h"
-#include "pixel.h"
-#include "game.h"
+#include "pbapi.h"
+#include "engine.h"
 #include <raylib.h>
 #include <stdlib.h>
 #include <string.h>
@@ -90,7 +89,7 @@ static void draw() {
 
 	item.x += item.width + 4;
 	if (GuiButton(item, "Exit program")) {
-		game_working = false;
+		_StopEngine();
 	};
 
 	item = old;
@@ -114,7 +113,7 @@ static void update() {
 }
 
 static void onclose() {
-	if (GetTime() > old_time) game_working = false; // can ESC
+	if (GetTime() > old_time) _StopEngine(); // can ESC
 	fprintf(stderr, "ESC\n");
 }
 

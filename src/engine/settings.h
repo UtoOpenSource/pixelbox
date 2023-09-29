@@ -17,12 +17,15 @@
  */
 
 #pragma once
-#include "pbapi.h"
 
-void InitChunkAllocator();
-void FreeChunkAllocator();
+#include <stdbool.h>
 
-struct chunk* allocChunk(int16_t x, int16_t y);
-void freeChunk(struct chunk* orig);
+extern bool  conf_vsync;
+extern int   conf_max_fps;
+extern int   conf_win_width;
+extern int   conf_win_height;
+extern bool  conf_debug_mode;
 
-uint64_t      GetMemoryUsage(); // not accurate
+void reloadSettings();
+void refreshSettings(); // refresh some values
+void saveSattings();

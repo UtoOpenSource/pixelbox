@@ -1,2 +1,4 @@
 -I./src/
+-I./src/libs/
+-I./src/engine/
 -I/usr/local/include
