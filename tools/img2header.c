@@ -3,15 +3,16 @@
 #include <stdio.h>
 
 const char* header_begin =
-"// This image is packed to header using generator in ./tools/ directory!\n"
-"// Copyright (C) 2022 UtoECat. All rights reserved.\n"
-"// GNU GPL License. No any warrianty!\n"
-"\n\n#pragma once\n";
+		"// This image is packed to header using generator in ./tools/ "
+		"directory!\n"
+		"// Copyright (C) 2022 UtoECat. All rights reserved.\n"
+		"// GNU GPL License. No any warrianty!\n"
+		"\n\n#pragma once\n";
 
-const char* data_type  = "static const unsigned char";
+const char* data_type = "static const unsigned char";
 const char* value_type = "static const int ";
 
-int main (int argc, char** argv) {
+int main(int argc, char** argv) {
 	if (argc < 4) {
 		perror("Usage : img2header [file] [array name] [output]");
 		exit(-1);

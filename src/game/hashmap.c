@@ -1,7 +1,24 @@
-// see pixelbox.h for copyright notice and license.
+/*
+ * This file is a part of Pixelbox - Infinite 2D sandbox game
+ * Copyright (C) 2023 UtoECat
+ *
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see
+ * <https://www.gnu.org/licenses/>
+ */
 #include "hashmap.h"
-#include "pbint.h"
 #include <stdlib.h>
+#include "pbint.h"
 
 static inline struct chunk** next(struct chunk* c, bool g) {
 	return g ? &(c->next) : &(c->next2);
@@ -15,7 +32,7 @@ struct chunk* findChunk(struct chunkmap* m, int16_t x, int16_t y) {
 	uint32_t hash = MAPHASH(pos.pack);
 	struct chunk* c = m->data[hash];
 	while (c) {
-		if (c->pos.pack == pos.pack) return c; // FOUND
+		if (c->pos.pack == pos.pack) return c;	// FOUND
 		c = *next(c, m->g);
 	}
 	return c;
@@ -26,7 +43,7 @@ void insertChunk(struct chunkmap* m, struct chunk* c) {
 	uint32_t hash = MAPHASH(c->pos.pack);
 	struct chunk* n = m->data[hash];
 	m->data[hash] = c;
-	*next(c, m->g) = n; 
+	*next(c, m->g) = n;
 }
 
 struct chunk* removeChunk(struct chunkmap* m, struct chunk* c) {
@@ -40,7 +57,7 @@ struct chunk* removeChunk(struct chunkmap* m, struct chunk* c) {
 	if (f == NULL) {
 		perror("OH NO! CAN'T REMOVE!");
 		return NULL;
-	}; 
+	};
 
 	struct chunk* nn = *next(f, m->g);
 	if (old) {
@@ -49,15 +66,15 @@ struct chunk* removeChunk(struct chunkmap* m, struct chunk* c) {
 	}
 	m->data[hash] = nn;
 	return nn;
-} // returns next chunk if avail.
+}	 // returns next chunk if avail.
 
-// functions below are always working with the GLOBAL map, so we are using next field directly here :p
+// functions below are always working with the GLOBAL map, so we are
+// using next field directly here :p
 
 // magic. We must remove and just put anything to save&free queue!
-void collectAnything (void) {
-
+void collectAnything(void) {
 	for (int i = 0; i < MAPLEN; i++) {
-		World.update.data[i] = NULL; // yeah...
+		World.update.data[i] = NULL;	// yeah...
 	}
 
 	for (int i = 0; i < MAPLEN; i++) {
@@ -65,15 +82,15 @@ void collectAnything (void) {
 		while (c) {
 			struct chunk* f = c;
 			c = c->next;
-			addSaveQueue(f); // will be freed IN!
+			addSaveQueue(f);	// will be freed IN!
 		}
-		World.map.data[i] = NULL; // optimisation for removal
+		World.map.data[i] = NULL;	 // optimisation for removal
 	}
 }
 
 #include <assert.h>
 
-int collectGarbage (void) {
+int collectGarbage(void) {
 	int limit = 0;
 
 	// collect general
@@ -81,13 +98,15 @@ int collectGarbage (void) {
 		struct chunk *c = World.map.data[i], *old = NULL;
 		while (c) {
 			if (c->usagefactor >= 0) c->usagefactor--;
-			if (c->usagefactor < 0) { // REMOVE AND COLLECT
+			if (c->usagefactor < 0) {	 // REMOVE AND COLLECT
 				struct chunk* f = c;
-				if (old) old->next = c->next; // remove
-				else World.map.data[i] = c->next; // remove
+				if (old)
+					old->next = c->next;	// remove
+				else
+					World.map.data[i] = c->next;	// remove
 				c = c->next;
 				// old stays the same
-				addSaveQueue(f); // will be freed IN (since it was removed!)!
+				addSaveQueue(f);	// will be freed IN (since it was removed!)!
 				limit++;
 			} else {
 				old = c;
@@ -105,14 +124,16 @@ int collectGarbage (void) {
 		struct chunk *c = World.load.data[i], *old = NULL;
 		while (c) {
 			if (c->usagefactor >= 0) c->usagefactor--;
-			if (c->usagefactor < 0) { // REMOVE AND COLLECT
+			if (c->usagefactor < 0) {	 // REMOVE AND COLLECT
 				struct chunk* f = c;
 				// next2, since load is minor hashmap!
-				if (old) old->next2 = c->next2; // remove
-				else World.load.data[i] = c->next2; // remove
+				if (old)
+					old->next2 = c->next2;	// remove
+				else
+					World.load.data[i] = c->next2;	// remove
 				c = c->next2;
 				// old stays the same
-				freeChunk(f); // remove it NOW!
+				freeChunk(f);	 // remove it NOW!
 				limit++;
 			} else {
 				old = c;
@@ -124,5 +145,3 @@ int collectGarbage (void) {
 
 	return 0;
 }
-
-

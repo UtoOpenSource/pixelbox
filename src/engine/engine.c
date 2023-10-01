@@ -1,11 +1,11 @@
-/* 
+/*
  * This file is a part of Pixelbox - Infinite 2D sandbox game
  * Copyright (C) 2023 UtoECat
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -13,14 +13,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>
+ * along with this program.  If not, see
+ * <https://www.gnu.org/licenses/>
  */
 
-#include <raylib.h>
 #include "engine.h"
-#include "screen.h"
+
+#include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "screen.h"
 
 static bool is_game_working = true;
 
@@ -30,20 +33,19 @@ void freeDToolkit();
 void drawDToolkit();
 bool updateDToolkit();
 
-void _StopEngine() {
-	is_game_working = false;
-}
+void _StopEngine() { is_game_working = false; }
 
 void _InitEngine() {
-	prof_register_thread(); // init profiler
+	prof_register_thread();	 // init profiler
 	prof_begin(PROF_INIT_FREE);
-	reloadSettings(); // load settings
-	
+	reloadSettings();	 // load settings
+
 	// raylib - set log and vsync/fps limit
 	SetTraceLogLevel(LOG_INFO);
-	if (conf_vsync) { 
+	if (conf_vsync) {
 		SetConfigFlags(FLAG_VSYNC_HINT);
-	} else SetTargetFPS(conf_max_fps);
+	} else
+		SetTargetFPS(conf_max_fps);
 
 	// init raylib window
 	InitWindow(conf_win_width, conf_win_height, "[PixelBox] : loading");
@@ -71,7 +73,7 @@ void _FreeEngine() {
 	// refresh some settings
 	refreshSettings();
 
-	freeAssetSystem(); // and VFS
+	freeAssetSystem();	// and VFS
 	CloseWindow();
 	saveSattings();
 	prof_unregister_thread();
@@ -91,9 +93,9 @@ static void _TickEngine() {
 	// collect usused assets
 	prof_begin(PROF_GC);
 	collectAssets();
-	prof_end(); 
+	prof_end();
 
-	UpdateScreenSystem(); // here all shit goes :D
+	UpdateScreenSystem();	 // here all shit goes :D
 
 	// finalize drawing
 	prof_begin(PROF_FINDRAW);
@@ -108,7 +110,6 @@ static void _TickEngine() {
 // that's right!
 void GlobalEngineEntryPoint() {
 	_InitEngine();
-	while (is_game_working) 
-		_TickEngine();
+	while (is_game_working) _TickEngine();
 	_FreeEngine();
 }

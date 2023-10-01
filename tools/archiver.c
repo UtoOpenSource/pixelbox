@@ -1,7 +1,8 @@
 #define LUA_IMPL
-#include "minilua.h"
-#include <stdio.h>
 #include <raylib.h>
+#include <stdio.h>
+
+#include "minilua.h"
 
 static int lua_deflate(lua_State* L) {
 	int outsize = 0;
@@ -23,7 +24,7 @@ int main(int argc, const char** argv) {
 	lua_setglobal(L, "compress");
 
 	lua_newtable(L);
-	for(int i = 1; i < argc; i++) {
+	for (int i = 1; i < argc; i++) {
 		lua_pushstring(L, argv[i]);
 		lua_seti(L, -2, i);
 	}

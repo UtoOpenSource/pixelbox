@@ -1,11 +1,11 @@
-/* 
+/*
  * This file is a part of Pixelbox - Infinite 2D sandbox game
  * Copyright (C) 2023 UtoECat
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -13,37 +13,36 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>
+ * along with this program.  If not, see
+ * <https://www.gnu.org/licenses/>
  */
 
-#include "raygui.h"
-#include "pixel.h"
+#include <assert.h>
 #include <raylib.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include <stdlib.h>
 #include <time.h>
+
+#include "pixel.h"
+#include "raygui.h"
 
 extern char* world_db_path;
 
 int CreationDialog() {
 	bool stat = false;
-	char seed     [64] = {0};
-	char filename [64] = {0};
-	int  mode          = 0;
-	int  input = 0, input2 = 0;
+	char seed[64] = {0};
+	char filename[64] = {0};
+	int mode = 0;
+	int input = 0, input2 = 0;
 
-	snprintf(seed, 64, "%li", time(NULL)*clock());
+	snprintf(seed, 64, "%li", time(NULL) * clock());
 
 	while (!(stat = WindowShouldClose())) {
 		BeginDrawing();
 		ClearBackground(BLACK);
 
-		Rectangle rec = {
-			GetScreenWidth()/4, GetScreenHeight()/4,
-			GetScreenWidth()/2, GetScreenHeight()/2
-		};
+		Rectangle rec = {GetScreenWidth() / 4, GetScreenHeight() / 4,
+										 GetScreenWidth() / 2, GetScreenHeight() / 2};
 		GuiPanel(rec, "Create new world");
 
 		rec.x += 5;
@@ -60,7 +59,7 @@ int CreationDialog() {
 
 		rec.y += 30;
 		GuiLine(rec, "Terrain");
-	
+
 		rec.y -= 60;
 		rec.x += rec.width;
 		if (GuiTextBox(rec, filename, 63, input)) input = !input;
@@ -74,13 +73,13 @@ int CreationDialog() {
 		rec.y += 80;
 		rec.x -= rec.width - 2;
 		if (GuiButton(rec, "Abort")) {
-			abort(); // that's was not joke :D
+			abort();	// that's was not joke :D
 		};
 
 		rec.x += rec.width + 2;
 		if (GuiButton(rec, "Done")) {
 			const char* src = TextFormat("./saves/%s.db", filename);
-			uint64_t len = strlen(src)+1;
+			uint64_t len = strlen(src) + 1;
 			world_db_path = malloc(len);
 			assert(world_db_path);
 			memcpy(world_db_path, src, len);
@@ -105,66 +104,68 @@ int CreationDialog() {
 // world selection dialog
 int IntroDialog() {
 	bool stat = false;
-	
+
 	FilePathList files = LoadDirectoryFilesEx("./saves", ".db", false);
 
 	const char* MEMORY_STR = ":memory:";
 	const char* EMPITY_STR = "-- EMPITY --";
 
-	const char** list = (const char**)calloc(sizeof(char*), files.count + 3);
+	const char** list =
+			(const char**)calloc(sizeof(char*), files.count + 3);
 	assert(list);
-	memcpy(list+2, files.paths, files.count*sizeof(char*));
+	memcpy(list + 2, files.paths, files.count * sizeof(char*));
 	list[0] = EMPITY_STR;
 	list[1] = MEMORY_STR;
-	int list_len = files.count+2, scroll = 0, select = 0;
+	int list_len = files.count + 2, scroll = 0, select = 0;
 
 	while (!(stat = WindowShouldClose())) {
 		BeginDrawing();
 		ClearBackground(BLACK);
 		GuiEnable();
 
-		Rectangle rec = {
-			GetScreenWidth()/4, GetScreenHeight()/4,
-			GetScreenWidth()/2, GetScreenHeight()/2
-		};
+		Rectangle rec = {GetScreenWidth() / 4, GetScreenHeight() / 4,
+										 GetScreenWidth() / 2, GetScreenHeight() / 2};
 		GuiPanel(rec, "Select world file");
 		rec.x += 5;
 		rec.width -= 10;
 		rec.y += 30;
-		rec.height -= 35*3;
+		rec.height -= 35 * 3;
 
-		select = GuiListViewEx(rec, list, list_len, NULL, &scroll, select);
+		select =
+				GuiListViewEx(rec, list, list_len, NULL, &scroll, select);
 
 		rec.y += rec.height + 5;
 		rec.height = 25;
-		rec.width  = rec.width / 2 - 2;
+		rec.width = rec.width / 2 - 2;
 
 		int active = select >= 0 ? select : 0;
 
-		if (select < 0 || list[active] == MEMORY_STR
-				|| list[active] == EMPITY_STR) GuiDisable();
+		if (select < 0 || list[active] == MEMORY_STR ||
+				list[active] == EMPITY_STR)
+			GuiDisable();
 
 		if (GuiButton(rec, "Delete")) {
 			remove(list[active]);
 			list[active] = EMPITY_STR;
 		}
-		
+
 		if (select >= 0) GuiEnable();
 
 		rec.x += rec.width + 4;
-		if (GuiButton(rec, (list[active] == EMPITY_STR) ? "Create" : "Open")) {
+		if (GuiButton(rec,
+									(list[active] == EMPITY_STR) ? "Create" : "Open")) {
 			perror("OK");
-			if (list[active] == EMPITY_STR) { // add file at first!
+			if (list[active] == EMPITY_STR) {	 // add file at first!
 				EndDrawing();
 			} else {
 				uint64_t len = strlen(list[active]);
 				if (world_db_path) free(world_db_path);
-				world_db_path = malloc(len+1);
+				world_db_path = malloc(len + 1);
 				assert(world_db_path);
-				memcpy(world_db_path, list[active], len+1);
+				memcpy(world_db_path, list[active], len + 1);
 				EndDrawing();
 			}
-			break; // exit
+			break;	// exit
 		}
 
 		rec.y += 25;
@@ -176,4 +177,3 @@ int IntroDialog() {
 	UnloadDirectoryFiles(files);
 	return stat;
 }
-

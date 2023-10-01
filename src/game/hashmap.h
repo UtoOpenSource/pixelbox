@@ -18,29 +18,11 @@
  */
 
 #pragma once
+#include "pbapi.h"
 
-struct screen {
-	struct screen* back;
-	void (*draw)(void);
-	void (*update)(void);
-	void (*create)(void);
-	void (*destroy)(void);
-	void (*onclose)(void);
-};
-
-extern struct screen ScrNull, ScrMainMenu, ScrLicense, ScrWorldList,
-		ScrNewWorld, ScrGamePlay, ScrSettings;
-
-void SetNextScreen(struct screen*);	 // and sets as current
-void SetRootScreen(
-		struct screen*);	// => sets as current. Cleanups stack
-int SetPrevScreen(struct screen*);	// fallback screen in arg if no
-																		// more screen in stack exist!
-
-int UpdateScreenSystem(void);
-
-Rectangle GuiMenuWindow(const char* title);
-int GuiTextView(Rectangle rec, const char* src);
-
-int GuiTabBarEx(Rectangle bounds, int width, int closeable,
-								const char** text, int count, int* active);
+int HashInit(struct chunkmap* m);
+void HashFree(struct chunkmap* m);
+int HashResize(struct chunkmap* m, unsigned int logsize);
+struct chunk* HashFind(struct chunkmap* m, int16_t x, int16_t y);
+void HashInsert(struct chunkmap* m, struct chunk* c);
+struct chunk* HashRemove(struct chunkmap* m, struct chunk* c);

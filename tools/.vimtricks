@@ -1,0 +1,21 @@
+
+There are several ways to do this.
+
+Inside Current Directory
+If you want to perform the search/replace in a project tree, you can use Vim's argument list.
+
+Simply open Vim and then use the :args command to populate the argument list. You can pass in multiple filenames or even globs.
+
+For example, :args **/*.rb will recursively search the current directory for ruby files. Notice that this is also like opening Vim with vim **/*.rb. You can even use the shell's find command to get a list of all files in the current directory by running:
+
+:args `find . -type f`
+You can view the current args list by running :args by itself. If you want to add or delete files from the list, you can use the :argadd or the :argdelete commands respectively.
+
+Once you're happy with the list, now you can use Vim's powerful :argdo command which runs a command for every file in the argument list: :argdo %s/search/replace/g
+
+Here are some tips for searching (based on some of the comments):
+
+Use a word boundary if you wanted to search for "foo" but not "foo_bar". Use the \< and \> constructs around the search pattern like so: :argdo %s/\<search\>/foobar/g
+Use a /c search flag if you want Vim to ask for confirmation before replacing a search term.
+Use a /e search flag if you want to skip the "pattern not found" errors.
+You can also choose to save the file after performing the search: :argdo %s/search/replace/g | update. Here, :update is used because it will only save the file if it has changed.

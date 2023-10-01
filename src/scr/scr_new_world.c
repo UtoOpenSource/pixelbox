@@ -1,11 +1,11 @@
-/* 
+/*
  * This file is a part of Pixelbox - Infinite 2D sandbox game
  * Copyright (C) 2023 UtoECat
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -13,22 +13,24 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>
+ * along with this program.  If not, see
+ * <https://www.gnu.org/licenses/>
  */
 
-#include "raygui.h"
-#include "pixel.h"
-#include "game.h"
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <time.h>
 
+#include "game.h"
+#include "pixel.h"
+#include "raygui.h"
+
 static bool status = false;
-static char seed     [64] = {0};
-static char filename [64] = ":null:";
-static int  mode          = 0;
-static int  input = 0, input2 = 0;
+static char seed[64] = {0};
+static char filename[64] = ":null:";
+static int mode = 0;
+static int input = 0, input2 = 0;
 
 #ifdef _WIN32
 #include <io.h>
@@ -38,25 +40,23 @@ static int  input = 0, input2 = 0;
 
 static void create() {
 	WorldRefCreate();
-	#if _WIN32
+#if _WIN32
 	_mkdir(".\\saves");
-	#else
+#else
 	mkdir("./saves", 0777);
-	#endif
-	snprintf(seed, 64, "%li", time(NULL)*clock());
+#endif
+	snprintf(seed, 64, "%li", time(NULL) * clock());
 }
 
-static void destroy() {
-	WorldRefDestroy();
-}
+static void destroy() { WorldRefDestroy(); }
 
 void remove_spaces(char* s) {
-    char* d = s;
-    do {
-        while (*s == ' ') {
-            s++;
-        }
-    } while (*d++ = *s++);
+	char* d = s;
+	do {
+		while (*s == ' ') {
+			s++;
+		}
+	} while (*d++ = *s++);
 }
 
 static void draw() {
@@ -71,7 +71,7 @@ static void draw() {
 
 	rec.y += 30;
 	GuiLine(rec, "Terrain");
-	
+
 	rec.y -= 60;
 	rec.x += rec.width;
 	if (GuiTextBox(rec, filename, 63, input)) input = !input;
@@ -102,7 +102,7 @@ static void draw() {
 		SetWindowTitle(TextFormat("[pixelbox] : %s", src));
 		openWorld(src);
 
-skip_load:
+	skip_load:
 		uint64_t seedr = 0;
 		sscanf(seed, "%li", &seedr);
 		setWorldSeed(seedr);
@@ -113,11 +113,6 @@ skip_load:
 	}
 }
 
-static void update() {
+static void update() {}
 
-}
-
-struct screen ScrNewWorld = {
-	NULL, draw, update, create, destroy
-};
-
+struct screen ScrNewWorld = {NULL, draw, update, create, destroy};
