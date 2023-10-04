@@ -38,7 +38,6 @@ void _FreeEngine();
 
 void GlobalEngineEntryPoint();
 
-
 Rectangle GuiMenuWindow(const char* title);
 int GuiTextView(Rectangle rec, const char* src);
 

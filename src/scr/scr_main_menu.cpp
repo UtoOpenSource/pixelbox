@@ -62,6 +62,7 @@ static void draw() {
 	rec.height -= 12;
 
 	if (GuiButton(item, "Open World")) {
+		PlayAssetSound(LookupAssetID("assets/boom.ogg"), 1.0, 1.0);
 	}
 
 	item.y += item.height + 5;

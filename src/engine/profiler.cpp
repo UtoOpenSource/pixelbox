@@ -42,7 +42,7 @@ struct prof_thread {
 	c89thrd_t id;
 	int stackpos;
 	c89mtx_t mutex;
-} prof_threads[PROF_THREADS_MAX] = {0};
+} prof_threads[PROF_THREADS_MAX];
 
 // summary history
 static struct prof_stats prof_history[PROF_THREADS_MAX]
@@ -222,7 +222,7 @@ void prof_step() {
 
 	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
 		prof_history[thread][i][prof_history_pos] = x->data[i];
-		x->data[i] = (struct prof_stats){0};
+		memset(x->data + i, 0, sizeof (struct prof_stats));
 	}
 	UNLOCK();
 	prof_history_pos++;

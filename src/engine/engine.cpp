@@ -27,18 +27,56 @@
 
 static bool is_game_working = true;
 
-void GuiLoadStyleDark();
+extern "C" void GuiLoadStyleDark();
+
+void _StopEngine() { is_game_working = false; }
+
 void initDToolkit();
 void freeDToolkit();
 void drawDToolkit();
 bool updateDToolkit();
 
-void _StopEngine() { is_game_working = false; }
+bool conf_vsync = true;
+int  conf_max_fps = 70;
+int  conf_win_width = 640;
+int  conf_win_height = 480;
+
+#include <limits.h>
+
+static conf::Register _c1("conf_vsync", conf_vsync);
+static conf::Register _c2("conf_max_fps", conf_max_fps, 1, 240);
+
+static int getwinwidth(conf::Integer&) {
+	return GetScreenWidth();
+}
+
+static int getwinheight(conf::Integer&) {
+	return GetScreenHeight();
+}
+
+static void setwinheight(conf::Integer& v);
+
+static conf::HookedValue<conf::Integer> _hv1(
+	nullptr, getwinwidth, conf_win_width, 100, INT_MAX
+);
+
+static conf::HookedValue<conf::Integer> _hv2(
+	setwinheight, getwinheight, conf_win_height, 100, INT_MAX
+);
+
+static void setwinheight(conf::Integer& v) {
+	fprintf(stderr, "value pointer=%p, real %p\n", v.value, &conf_win_height);
+	fprintf(stderr, "value pointer=%p, real %p\n", v.value, _hv2.value);
+	if (v.value != &conf_win_height) throw "fuck so much!!!";
+}
+
+static conf::Register _c3("conf_win_width", _hv1);
+static conf::Register _c4("conf_win_height", _hv2);
 
 void _InitEngine() {
 	prof_register_thread();	 // init profiler
 	prof_begin(PROF_INIT_FREE);
-	reloadSettings();	 // load settings
+	conf::Reload(); // load settings
 
 	// raylib - set log and vsync/fps limit
 	SetTraceLogLevel(LOG_INFO);
@@ -56,6 +94,7 @@ void _InitEngine() {
 
 	// init asset system and VFS
 	initAssetSystem();
+	InitAudioDevice();
 
 	// init Screen system
 	SetRootScreen(&ScrMainMenu);
@@ -72,12 +111,14 @@ void _FreeEngine() {
 	freeDToolkit();
 	freeScreenSystem();
 
-	// refresh some settings
-	refreshSettings();
+	CloseAudioDevice();
+
+	// no need to refresh some settings now...
+	conf::Save(); // save settings here, 'cause this is last chance
 
 	freeAssetSystem();	// and VFS
 	CloseWindow();
-	saveSattings();
+	conf::Destroy(); // we don't need all theese parameters anymore
 	prof_unregister_thread();
 	// DONE
 }
@@ -90,7 +131,7 @@ static void _TickEngine() {
 	prof_begin(PROF_FINDRAW);
 	BeginDrawing();
 	ClearBackground(RAYWHITE);
-	prof_end(PROF_FINDRAW);
+	prof_end();
 
 	// collect usused assets
 	prof_begin(PROF_GC);
@@ -109,9 +150,22 @@ static void _TickEngine() {
 	prof_step();
 }
 
+#include <stdio.h>
+#include <exception>
+
 // that's right!
 void GlobalEngineEntryPoint() {
-	_InitEngine();
-	while (is_game_working) _TickEngine();
-	_FreeEngine();
+	try {
+		_InitEngine();
+		try {
+		while (is_game_working) _TickEngine();
+		} catch (std::exception& x) {
+			fprintf(stderr, "uncaught gametick exception : %s\n", x.what());
+		}
+		_FreeEngine();
+	} catch (const char* s) {
+		fprintf(stderr, "uncaught exception : %s\n", s);
+	} catch (std::exception& x) {
+		fprintf(stderr, "uncaught std::exception %s\n", x.what());
+	}
 }

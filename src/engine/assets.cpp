@@ -17,9 +17,10 @@
  * <https://www.gnu.org/licenses/>
  */
 
-#include "assets.h"
-
 #include <stdlib.h>
+
+#include "assets.h"
+#include "profiler.h"
 
 enum { ASSET_NULL, ASSET_STRING, ASSET_TEXTURE, ASSET_WAVE };
 
@@ -81,7 +82,7 @@ static uint8_t* loadFile(const char* fn, unsigned int* cnt) {
 		int size = ftell(file);
 		fseek(file, 0, SEEK_SET);
 		if (size > 0) {
-			data = (unsigned char*)malloc(size + 1);
+			data = (char*)malloc(size + 1);
 			long int count = fread(data, sizeof(unsigned char), size, file);
 			*cnt = count;
 		} else
@@ -109,13 +110,19 @@ void initAssetSystem() {
 	SetLoadFileDataCallback(loadFile);
 	SetLoadFileTextCallback(loadFileT);
 
-	Image err = (Image){.data = img_error_data,
-											.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
-											.mipmaps = 1,
-											.width = img_error_width,
-											.height = img_error_height};
+	Image err;
+	err.data = const_cast<unsigned char*>(img_error_data);
+	err.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+	err.mipmaps = 1;
+	err.width = img_error_width;
+	err.height = img_error_height;
 	errorTexture = LoadTextureFromImage(err);
-	errorWave = (Wave){1, 1, 8, 1, null_data};
+	errorWave.channels = 1;
+	errorWave.data = null_data;
+	errorWave.frameCount = 16;
+	errorWave.sampleRate = 16;
+	errorWave.sampleSize = 8;
+	//{1, 1, 8, 1, null_data};
 }
 
 static void free_node(struct AssetNode* n) {
@@ -202,7 +209,7 @@ static struct AssetNode* new_node(const char* path) {
 			if (!data) break;
 			int len = strlen(data) + 1;
 
-			node = calloc(sizeof(struct AssetNode) + len, 1);
+			node = (AssetNode*)calloc(sizeof(AssetNode) + len, 1);
 			if (!node) {
 				UnloadFileText(data);
 				break;
@@ -213,7 +220,7 @@ static struct AssetNode* new_node(const char* path) {
 			UnloadFileText(data);
 		} break;
 		case ASSET_TEXTURE: {
-			Texture2D texture = {0};
+			Texture2D texture;
 
 			prof_begin(PROF_DISK);
 			Image img = LoadImage(path);
@@ -223,7 +230,7 @@ static struct AssetNode* new_node(const char* path) {
 			texture = LoadTextureFromImage(img);
 			UnloadImage(img);
 
-			node = calloc(sizeof(struct AssetNode), 1);
+			node = (AssetNode*)calloc(sizeof(AssetNode), 1);
 			if (!node) {
 				UnloadTexture(texture);
 				break;
@@ -239,7 +246,7 @@ static struct AssetNode* new_node(const char* path) {
 
 			if (!IsWaveReady(wave)) break;
 
-			node = calloc(sizeof(struct AssetNode), 1);
+			node = (AssetNode*)calloc(sizeof(AssetNode), 1);
 			if (!node) {
 				UnloadWave(wave);
 				break;
@@ -251,7 +258,7 @@ static struct AssetNode* new_node(const char* path) {
 	};
 
 	if (!node) {
-		node = calloc(sizeof(struct AssetNode), 1);
+		node = (AssetNode*)calloc(sizeof(AssetNode), 1);
 		if (!node) return NULL;
 		node->type = ASSET_NULL;
 	}
@@ -361,19 +368,22 @@ const char* GetStringAsset(AssetID id) {
 
 Wave GetWaveAsset(AssetID id) {
 	struct AssetNode* n = getNode(id);
-	if (!n || n->type != ASSET_WAVE) return errorWave;
+	if (!n || n->type != ASSET_WAVE) {
+		perror("NO SOUND!");
+		return errorWave;
+	}
 	return n->data.wave;
 }
 
 #define SOUND_PULL_SIZE 20
-static Sound sound_pull[SOUND_PULL_SIZE] = {0};
+static Sound sound_pull[SOUND_PULL_SIZE];
 static int free_sound = 0;
 
 static void UnloadSounds() {
 	for (int i = 0; i < SOUND_PULL_SIZE; i++) {
 		if (IsSoundReady(sound_pull[i])) {
 			UnloadSound(sound_pull[i]);
-			sound_pull[i] = (Sound){0};
+			memset(sound_pull + i, 0, sizeof (Sound));
 		}
 	}
 
@@ -385,7 +395,7 @@ static Sound* getSpace() {
 		if (IsSoundReady(sound_pull[i])) {
 			if (!IsSoundPlaying(sound_pull[i])) {
 				UnloadSound(sound_pull[i]);
-				sound_pull[i] = (Sound){0};
+				memset(sound_pull + i, 0, sizeof (Sound));
 				free_sound = i + 1;
 				return sound_pull + i;
 			}
@@ -401,7 +411,7 @@ static Sound* getSpace() {
 			continue;
 		// found!
 		UnloadSound(sound_pull[i]);
-		sound_pull[i] = (Sound){0};
+		memset(sound_pull + i, 0, sizeof (Sound));
 		free_sound = i + 1;
 		return sound_pull + i;
 	}
@@ -411,7 +421,8 @@ static Sound* getSpace() {
 	for (int i = 0; i < SOUND_PULL_SIZE - 1; i++) {
 		sound_pull[i] = sound_pull[i + 1];
 	}
-	sound_pull[SOUND_PULL_SIZE - 1] = (Sound){0};
+	
+	memset(sound_pull + SOUND_PULL_SIZE-1, 0, sizeof(Sound));
 	return sound_pull + (SOUND_PULL_SIZE - 1);
 }
 

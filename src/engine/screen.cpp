@@ -76,6 +76,9 @@ void freeScreenSystem(void) {
 	if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 }
 
+bool conf_debug_mode = 0;
+static conf::Register _c1("conf_debug_mode", conf_debug_mode);
+
 int UpdateScreenSystem(bool should_close) {
 	int lock = 0;
 	if (conf_debug_mode) lock = updateDToolkit();

@@ -3,16 +3,20 @@
 include makecfg
 
 SRCS += 
-OBJS := $(SRCS:./src/%.c=./bin/%.o)
+OBJS := $(SRCS:./src/%=./bin/%.o)
 DEPS := $(OBJS:.o=.d)
 FLAGS += -MMD -MP
 
 pixelbox : $(OBJS)
-	$(CC) $^ -o $@ $(LFLAGS) -lm -lpthread -lraylib -rdynamic $(FLAGS)
+	$(CXX) $^ -o $@ $(LFLAGS) -lm -lpthread -lraylib -rdynamic $(FLAGS)
 
-./bin/%.o : ./src/%.c
+./bin/%.c.o : ./src/%.c
 	mkdir -p $(dir $@)
 	$(CC) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS)
+
+./bin/%.cpp.o : ./src/%.cpp
+	mkdir -p $(dir $@)
+	$(CXX) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS)
 
 # archiver building...
 ./tools/archiver : ./tools/archiver.c

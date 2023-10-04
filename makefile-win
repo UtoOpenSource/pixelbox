@@ -3,20 +3,25 @@
 include makecfg
 
 SRCS +=  
-OBJS := $(SRCS:./src/%.c=./wbin/%.o)
+OBJS := $(SRCS:./src/%=./wbin/%.o)
 DEPS := $(OBJS:.o=.d)
 FLAGS += -MMD -MP
 
-CC := x86_64-w64-mingw32-gcc 
+CC  := x86_64-w64-mingw32-gcc 
+CXX := x86_64-w64-mingw32-g++
 
 pixelbox: pixelbox.exe
 
 pixelbox.exe : $(OBJS)
 	$(CC) $^ libraylib.a -o $@  $(LFLAGS) -static -static-libgcc -lm -lgdi32 -lwinmm -lpthread $(FLAGS)
 
-./wbin/%.o : ./src/%.c
+./wbin/%.c.o : ./src/%.c
 	mkdir -p $(dir $@)
 	$(CC) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS)
+
+./wbin/%.cpp.o : ./src/%.cpp
+	mkdir -p $(dir $@)
+	$(CXX) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS)
 
 clean :
 	rm ./wbin/*.o
