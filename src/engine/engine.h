@@ -37,3 +37,10 @@ void _InitEngine();
 void _FreeEngine();
 
 void GlobalEngineEntryPoint();
+
+
+Rectangle GuiMenuWindow(const char* title);
+int GuiTextView(Rectangle rec, const char* src);
+
+int GuiTabBarEx(Rectangle bounds, int width, int closeable,
+								const char** text, int count, int* active);

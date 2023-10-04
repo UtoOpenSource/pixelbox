@@ -1,4 +1,6 @@
 -I./src/
 -I./src/libs/
 -I./src/engine/
+-I./src/game/
+-I./src/scr
 -I/usr/local/include

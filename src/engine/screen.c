@@ -17,14 +17,7 @@
  * <https://www.gnu.org/licenses/>
  */
 
-#include "screen.h"
-
-#include <raylib.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "profiler.h"
-#include "settings.h"
+#include "engine.h"
 
 static struct screen *SCREEN = &ScrNull, *CHANGE = NULL;
 
@@ -79,7 +72,11 @@ void freeDToolkit();
 void drawDToolkit();
 bool updateDToolkit();
 
-int UpdateScreenSystem(void) {
+void freeScreenSystem(void) {
+	if (SCREEN && SCREEN->destroy) SCREEN->destroy();
+}
+
+int UpdateScreenSystem(bool should_close) {
 	int lock = 0;
 	if (conf_debug_mode) lock = updateDToolkit();
 	if (lock) GuiLock();
@@ -106,7 +103,7 @@ int UpdateScreenSystem(void) {
 		else if (SCREEN && SCREEN->back)
 			SetPrevScreen(NULL);
 		else
-			game_working = false;
+			_StopEngine();
 	}
 	if (CHANGE) {
 		if (SCREEN && SCREEN->destroy) SCREEN->destroy();

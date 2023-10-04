@@ -2,9 +2,10 @@
 
 include makecfg
 
-SRCS := $(shell find ./src/ -name '*.c') ./src/archive-generated.c
+SRCS += 
 OBJS := $(SRCS:./src/%.c=./bin/%.o)
-FLAGS +=  
+DEPS := $(OBJS:.o=.d)
+FLAGS += -MMD -MP
 
 pixelbox : $(OBJS)
 	$(CC) $^ -o $@ $(LFLAGS) -lm -lpthread -lraylib -rdynamic $(FLAGS)
@@ -19,3 +20,7 @@ pixelbox : $(OBJS)
 
 clean :
 	rm ./bin/*.o
+
+-include $(DEPS)
+
+

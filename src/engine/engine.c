@@ -65,10 +65,12 @@ void _InitEngine() {
 	prof_end();
 }
 
+void freeScreenSystem(void);
+
 void _FreeEngine() {
 	// free screen system and current screen
-	if (SCREEN && SCREEN->destroy) SCREEN->destroy();
 	freeDToolkit();
+	freeScreenSystem();
 
 	// refresh some settings
 	refreshSettings();
@@ -95,7 +97,7 @@ static void _TickEngine() {
 	collectAssets();
 	prof_end();
 
-	UpdateScreenSystem();	 // here all shit goes :D
+	UpdateScreenSystem(should_close);	 // here all shit goes :D
 
 	// finalize drawing
 	prof_begin(PROF_FINDRAW);

@@ -24,11 +24,17 @@
 #include <time.h>
 
 #include "engine.h"
+#include "pbapi.h"
+
+const char* getSplash();
+void rngSplash();
 
 static double old_time;
 
 static void create() {
 	old_time = GetTime() + 3;
+	rngSplash();
+	SetWindowTitle(TextFormat("[pixelbox] : %s", getSplash()));
 }
 
 static void destroy() {}
@@ -51,8 +57,8 @@ static void draw() {
 	GuiAssetTexture(item, LookupAssetID("assets/icon.png"));
 	item.x += 105;
 	item.width = 140;
-	GuiLabel(item, TextFormat("Pixelbox v.%s\n%s%s", "undefined",
-														title_text, splash));
+	GuiLabel(item, TextFormat("Pixelbox v.%s\n%s%s", PBOX_VERSION,
+														title_text, getSplash()));
 
 	rec.y += 100 + 5;
 	rec.height -= 100 + 5;
@@ -62,10 +68,12 @@ static void draw() {
 	rec.height -= 12;
 
 	if (GuiButton(item, "Open World")) {
+		SetNextScreen(&ScrWorldList);
 	}
 
 	item.y += item.height + 5;
 	if (GuiButton(item, "Create New World")) {
+		SetNextScreen(&ScrNewWorld);
 	}
 
 	item.y += item.height + 5;
@@ -73,6 +81,7 @@ static void draw() {
 	item.width = item.width / 2 - 2;
 
 	if (GuiButton(item, "Settings")) {
+		SetNextScreen(&ScrSettings);
 	};
 
 	item.x += item.width + 4;
@@ -92,6 +101,7 @@ static void draw() {
 	item.width /= 3;
 	item.width += 0.5;
 	if (GuiButton(item, "License")) {
+		SetNextScreen(&ScrLicense);
 	}
 }
 

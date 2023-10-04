@@ -17,13 +17,7 @@
  * <https://www.gnu.org/licenses/>
  */
 
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "game.h"
-#include "pixel.h"
-#include "raygui.h"
+#include "engine.h"
 
 static void create() {}
 

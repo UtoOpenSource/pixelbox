@@ -1,6 +1,9 @@
-INCS  := -I./src/ -I./src/libs -I./src/engine -I./src/game
-FLAGS := -O2 -fanalyzer -Werror -flto
+DIRS  := ./src/scr ./src/libs ./src/engine ./src/game
+
+INCS  := $(addprefix -I,$(DIRS)) -I./src/ 
+FLAGS := -O2 
 LFLAGS := -g
+SRCS := $(shell find $(DIRS) -name '*.c' -or -name '*.cpp') ./src/archive-generated.c
 
 all: pixelbox
 

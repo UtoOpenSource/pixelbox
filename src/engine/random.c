@@ -2,6 +2,8 @@
  * Comtains a lot of thirdparty MIT Licensed/Public domain code
  */
 
+#include "stdbool.h"
+
 /*
  * Original random generator was taken from Luau programming language
  * Copyright (c) 2019-2022 Roblox Corporation

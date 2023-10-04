@@ -2,9 +2,11 @@
 
 include makecfg
 
-SRCS := $(shell find ./src/ -name '*.c')
+SRCS +=  
 OBJS := $(SRCS:./src/%.c=./wbin/%.o)
-FLAGS += 
+DEPS := $(OBJS:.o=.d)
+FLAGS += -MMD -MP
+
 CC := x86_64-w64-mingw32-gcc 
 
 pixelbox: pixelbox.exe
@@ -18,6 +20,8 @@ pixelbox.exe : $(OBJS)
 
 clean :
 	rm ./wbin/*.o
+
+-include $(DEPS)
 
 # build raylib with this command (make shure it's static) : 
 # make CC=x86_64-w64-mingw32-gcc USE_EXTERNAL_GLFW=FALSE

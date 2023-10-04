@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "stdbool.h"
 
 struct screen {
 	struct screen* back;
@@ -37,10 +38,5 @@ void SetRootScreen(
 int SetPrevScreen(struct screen*);	// fallback screen in arg if no
 																		// more screen in stack exist!
 
-int UpdateScreenSystem(void);
+int UpdateScreenSystem(bool should_close);
 
-Rectangle GuiMenuWindow(const char* title);
-int GuiTextView(Rectangle rec, const char* src);
-
-int GuiTabBarEx(Rectangle bounds, int width, int closeable,
-								const char** text, int count, int* active);

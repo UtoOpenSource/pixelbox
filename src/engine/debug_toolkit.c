@@ -31,10 +31,9 @@ static void controlTab(Rectangle rec) {
 	Rectangle item = (Rectangle){rec.x, rec.y, rec.width - 25, 10};
 }
 
-#include "version.h"
-
 bool CheckCurrentScreen(struct screen* CURR);
-bool safeWorld() { return CheckCurrentScreen(&ScrGamePlay); }
+
+static bool window_hidden = false;
 
 void drawDToolkit() {
 	GuiLock();
