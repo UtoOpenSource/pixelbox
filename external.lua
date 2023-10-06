@@ -5,4 +5,6 @@ function engine_loop(dt, close)
 	return close
 end
 
+raylib.SetWindowTitle("among");
+
 print "loaded!"

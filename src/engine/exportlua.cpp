@@ -24,21 +24,23 @@
 
 namespace lua {
 
-	static std::list<RegisterInitHook*> hooklist;
+	static std::list<lua_CFunction> *hooklist = nullptr;
 
 	RegisterInitHook::RegisterInitHook(lua_CFunction fun) {
-		this->hook = fun;
 		if (!fun) throw "bad hook to register!";
-		hooklist.push_back(this);
+		if (!hooklist) hooklist = new std::list<lua_CFunction>();
+		hooklist->push_back(fun);
 	}
 	
 	void applyRegisteredHooks(lua_State* L) {
-		for (auto& i : hooklist) {
-			lua_pushcfunction(L, i->hook);
+		if (!hooklist) return;
+		for (auto& i : *hooklist) {
+			lua_pushcfunction(L, i);
 			if (lua_pcall(L, 0, 1, -1) != LUA_OK) {
 				vflog("LUA: APPLYREG: %s", luaL_tolstring(L, -1, nullptr));
 				throw "fatal error! Init hook failed!";
 			};
+			lua_pop(L, 1);
 		}
 	}
 
@@ -58,6 +60,10 @@ namespace lua {
 		luaL_openlibs(L);
 		applyRegisteredHooks(L); // theese are CALLED!
 		return L;
+	}
+
+	void unregisterHooks() {
+		delete hooklist;
 	}
 
 };

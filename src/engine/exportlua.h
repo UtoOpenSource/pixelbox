@@ -30,15 +30,15 @@ namespace lua {
 
 	class RegisterInitHook {
 		public:
-		lua_CFunction hook;
-		public:
 		RegisterInitHook(lua_CFunction fun);
 		~RegisterInitHook() = default;
 		RegisterInitHook(const RegisterInitHook&) = delete;
 		RegisterInitHook(RegisterInitHook&&) = delete;
 	};
-	
+
 	void applyRegisteredHooks(lua_State* L);
+
+	void unregisterHooks();
 
 	lua_State* newState();
 };

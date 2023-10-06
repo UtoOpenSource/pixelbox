@@ -105,7 +105,9 @@ void uninit() {
 	CloseWindow();
 	conf::Destroy(); // we don't need all theese parameters anymore
 	prof_unregister_thread();
+
 	// DONE
+	lua::unregisterHooks(); // hehe
 }
 
 static void tick() {
