@@ -42,6 +42,7 @@ static void* readvfile(const char* fn, size_t* ressize) {
 		}
 	}
 
+	vflog("can't find file %s in vfs!", fn);
 	return NULL;
 }
 
@@ -50,6 +51,7 @@ VFILE* vfwrap(FILE* ff, int noclose) {
 	VFILE* f = new VFILE;
 	f->pos = noclose ? 666 : 0;
 	f->size_if_buff = 0; 
+	f->real_file = 1;
 	f->ptr = ff;
 	return f;
 }
@@ -58,10 +60,17 @@ FILE* vfraw(VFILE* f) {
 	return f->size_if_buff ? NULL : (FILE*)f->ptr;
 }
 
+static bool isreal(VFILE* f) {
+	if (!f || !f->ptr) throw "file is misused!";
+	if ((!f->size_if_buff) != f->real_file) throw "corruption?";
+	return !f->size_if_buff;
+}
+
 VFILE* vfopen(const char* path, int mode) {
 	VFILE* f = new VFILE;
 	f->pos = 0;
 	f->size_if_buff = 0; 
+	f->real_file = 0;
 
 	FILE*  real = NULL;
 
@@ -70,6 +79,7 @@ VFILE* vfopen(const char* path, int mode) {
 		if (f->ptr) return f; // OK!
 
 		real = fopen(path, "rb");
+		f->real_file = 1;
 		f->ptr = real;
 		goto regular; // regular file
 	
@@ -78,6 +88,8 @@ VFILE* vfopen(const char* path, int mode) {
 		regular:
 		if (real) { // real file !
 			f->ptr = real;
+			f->real_file = 1;
+			return f;
 		}
 	}
 
@@ -86,10 +98,6 @@ VFILE* vfopen(const char* path, int mode) {
 	return NULL;
 }
 
-static bool isreal(VFILE* f) {
-	if (!f || !f->ptr) throw "file is misused!";
-	return f->size_if_buff;
-}
 
 void   vfclose(VFILE* strm) {
 	if (isreal(strm)) {
@@ -102,6 +110,7 @@ void   vfclose(VFILE* strm) {
 int   vfread(void *dst, size_t sz, VFILE* strm) {
 	if (!isreal(strm)) {
 		size_t maxsz = strm->size_if_buff - strm->pos;
+		if (maxsz > strm->size_if_buff) throw "daack";
 		if (sz > maxsz) sz = maxsz;
 		memcpy(dst, (char*)strm->ptr + strm->pos, sz);
 		strm->pos += sz;
@@ -166,7 +175,7 @@ void vfclearerror(VFILE* strm) {
 int    vferror (VFILE* strm) {
 	if (isreal(strm)) {
 		return ferror((FILE*)strm->ptr);
-	} else return strm->pos >= strm->size_if_buff ? EOF : 0; 
+	} else return 0; 
 }
 
 int    vfflush (VFILE* strm) {

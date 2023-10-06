@@ -5,6 +5,7 @@
 typedef struct {
  void* ptr;
  size_t size_if_buff;
+ bool   real_file;
  size_t pos;
 } VFILE;
 

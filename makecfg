@@ -1,7 +1,7 @@
 DIRS  := ./src/scr ./src/libs ./src/engine ./src/game
 
 INCS  := $(addprefix -I,$(DIRS)) -I./src/ 
-FLAGS := -O2 
+FLAGS := -O0 
 LFLAGS := -g
 SRCS := $(shell find $(DIRS) -name '*.c' -or -name '*.cpp') ./src/archive-generated.c
 

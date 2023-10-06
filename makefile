@@ -5,7 +5,7 @@ include makecfg
 SRCS += 
 OBJS := $(SRCS:./src/%=./bin/%.o)
 DEPS := $(OBJS:.o=.d)
-FLAGS += -MMD -MP
+FLAGS += -MMD -MP -fsanitize=address
 
 pixelbox : $(OBJS)
 	$(CXX) $^ -o $@ $(LFLAGS) -lm -lpthread -lraylib -rdynamic $(FLAGS)

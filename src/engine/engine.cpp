@@ -84,7 +84,9 @@ void init() {
 	InitAudioDevice();
 
 	global = lua::newState();
-	luaL_dostring(global, "require 'lua/main'");
+	if (luaL_dostring(global, "require 'lua/main'") != LUA_OK) {
+		vflog("LUA: %s", luaL_tolstring(global, -1, nullptr));
+	};
 
 	// end
 	prof_end();
@@ -122,14 +124,21 @@ static void tick() {
 	prof_end();
 
 	// TODO: draw something
-	perror("in loop");
 	lua_State* L = global;
 	lua_settop(L, 0);
-	if (lua_getglobal(L, "engine_loop") != LUA_TFUNCTION ||
-			lua_pcall(L, 0, 1, -1) != LUA_OK) {
+	
+	int err = lua_getglobal(L, "engine_loop") != LUA_TFUNCTION;
+	if (!err) {
+		lua_pushnumber(L, GetFrameTime());
+		lua_pushboolean(L, should_close);
+	}
+	if (err || lua_pcall(L, 2, 1, 0) != LUA_OK) {
 		vflog("LUA: LOOP: %s", lua_tostring(L, -1));
 		stop();
 	};
+	if (lua_toboolean(L, -1) != 0) {
+		stop();
+	}
 
 	// finalize drawing
 	prof_begin(PROF_FINDRAW);
