@@ -9525,6 +9525,13 @@ static unsigned char assets_shit_maker_png[] = {
 	64, 72, 139, 43, 136, 213, 138, 24, 
 	5, 255, 63};
 
+static unsigned char lua_main_lua[] = {
+	5, 64, 177, 13, 0, 32, 8, 
+	219, 189, 162, 229, 12, 103, 31, 113, 
+	112, 208, 193, 16, 40, 255, 19, 143, 
+	251, 5, 123, 149, 194, 134, 78, 138, 
+	36, 230, 178, 209};
+
 const struct archive_node {
 	const char* name;
 	const long unsigned int length;
@@ -9534,5 +9541,6 @@ const struct archive_node {
 	{"assets/icon.png", sizeof(assets_icon_png), assets_icon_png},
 	{"assets/license.txt", sizeof(assets_license_txt), assets_license_txt},
 	{"assets/shit_maker.png", sizeof(assets_shit_maker_png), assets_shit_maker_png},
+	{"lua/main.lua", sizeof(lua_main_lua), lua_main_lua},
 	{(const char*)0, 0, (const unsigned char*)0}
 };

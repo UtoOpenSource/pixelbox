@@ -17,14 +17,28 @@
  * <https://www.gnu.org/licenses/>
  */
 
-#include "engine.h"
+#pragma once
 
-static void create() {}
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-static void destroy() {}
+#include "minilua.h"
 
-static void draw() {}
+namespace lua {
 
-static void update() {}
+	class RegisterInitHook {
+		public:
+		lua_CFunction hook;
+		public:
+		RegisterInitHook(lua_CFunction fun);
+		~RegisterInitHook() = default;
+		RegisterInitHook(const RegisterInitHook&) = delete;
+		RegisterInitHook(RegisterInitHook&&) = delete;
+	};
+	
+	void applyRegisteredHooks(lua_State* L);
 
-struct screen ScrNull = {NULL, draw, update, create, destroy};
+	lua_State* newState();
+};

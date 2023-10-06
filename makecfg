@@ -8,5 +8,5 @@ SRCS := $(shell find $(DIRS) -name '*.c' -or -name '*.cpp') ./src/archive-genera
 all: pixelbox
 
 # generate asset archive :D
-./src/archive-generated.c : ./tools/archiver
-	./tools/archiver assets/* > ./src/archive-generated.c
+./src/archive-generated.c : ./tools/archiver assets/* lua/*
+	./tools/archiver assets/* lua/* > ./src/archive-generated.c

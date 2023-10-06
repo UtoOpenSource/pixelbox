@@ -17,26 +17,6 @@
  * <https://www.gnu.org/licenses/>
  */
 
-#pragma once
-#include "stdbool.h"
-
-struct screen {
-	struct screen* back;
-	void (*draw)(void);
-	void (*update)(void);
-	void (*create)(void);
-	void (*destroy)(void);
-	void (*onclose)(void);
-};
-
-extern struct screen ScrNull, ScrMainMenu, ScrLicense, ScrWorldList,
-		ScrNewWorld, ScrGamePlay, ScrSettings;
-
-void SetNextScreen(struct screen*);	 // and sets as current
-void SetRootScreen(
-		struct screen*);	// => sets as current. Cleanups stack
-int SetPrevScreen(struct screen*);	// fallback screen in arg if no
-																		// more screen in stack exist!
-
-int UpdateScreenSystem(bool should_close);
-
+#include <cmath>
+#define LUA_IMPL
+#include "minilua.h"

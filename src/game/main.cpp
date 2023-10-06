@@ -1,5 +1,7 @@
 #include "engine.h"
 
 int main() {
-	GlobalEngineEntryPoint();
+	engine::init();
+	engine::join();
+	engine::uninit();
 }

@@ -45,13 +45,6 @@ static char null_data[128] = {0};
 
 #include "img_error.h"
 
-// DEFLATE'd!
-extern const struct archive_node {
-	const char* name;
-	const long unsigned int length;
-	const unsigned char* value;
-} __main_arcive[];
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,39 +52,26 @@ extern const struct archive_node {
 
 #define TRACELOG(...) TraceLog(__VA_ARGS__);
 
+#include "vfs.h"
+
 static uint8_t* loadFile(const char* fn, unsigned int* cnt) {
-	for (const struct archive_node* n = __main_arcive; n->name; n++) {
-		if (strcmp(fn, n->name) == 0) {
-			// char* copy = malloc(n->length+1);
-			// if (!copy) return NULL;
-			// memcpy(copy, n->value, n->length);
-			int ressize = 0;
-			uint8_t* res =
-					DecompressData((uint8_t*)n->value, n->length, &ressize);
-			*cnt = ressize;
-			return res;
-		}
-	}
-	// else
-	// taken form raylib, else i will actually write same stuff...
-	FILE* file = fopen(fn, "rb");
 	char* data = NULL;
 
-	if (file != NULL) {
-		fseek(file, 0, SEEK_END);
-		int size = ftell(file);
-		fseek(file, 0, SEEK_SET);
+	VFILE* f = vfopen(fn, MODE_READ);
+	if (f != NULL) {
+		vfseek(f, 0, SEEK_END);
+		long int size = vftell(f);
+		vfseek(f, 0, SEEK_SET);
 		if (size > 0) {
 			data = (char*)malloc(size + 1);
-			long int count = fread(data, sizeof(unsigned char), size, file);
+			long int count = vfread(data, size, f);
 			*cnt = count;
-		} else
-			TRACELOG(LOG_WARNING, "Failed to read file %s", fn);
-		fclose(file);
-	} else
-		TRACELOG(LOG_WARNING, "Failed to open file %s", fn);
-	*cnt = 0;
-	return NULL;
+		} 
+		vfclose(f);
+	} else {
+		*cnt = 0;
+	}
+	return (unsigned char*)data; 
 }
 
 static char* loadFileT(const char* fn) {

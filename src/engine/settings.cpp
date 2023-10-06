@@ -133,6 +133,7 @@ void   Integer::showGUI(const char* name, float x, float y, float w, float h) {
 }
 
 // keep all settings in one list
+// TODO: change on hashmap somewhat later
 
 static Parameter* list = nullptr, *last = nullptr;
 

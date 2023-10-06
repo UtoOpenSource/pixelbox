@@ -28,18 +28,19 @@
 #include "profiler.h"
 #include "random.h"
 #include "raygui.h"
-#include "screen.h"
 #include "settings.h"
+#include "exportlua.h"
 
-void _StopEngine();
+namespace engine {
 
-void _InitEngine();
-void _FreeEngine();
+extern lua_State* global;
 
-void GlobalEngineEntryPoint();
+void stop();
 
-Rectangle GuiMenuWindow(const char* title);
-int GuiTextView(Rectangle rec, const char* src);
+void init();
+void uninit();
 
-int GuiTabBarEx(Rectangle bounds, int width, int closeable,
-								const char** text, int count, int* active);
+void join();
+
+};
+

@@ -22,19 +22,16 @@
 #include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "screen.h"
-
-static bool is_game_working = true;
+#include <stdio.h>
+#include <exception>
 
 extern "C" void GuiLoadStyleDark();
 
-void _StopEngine() { is_game_working = false; }
+namespace engine {
 
-void initDToolkit();
-void freeDToolkit();
-void drawDToolkit();
-bool updateDToolkit();
+static bool is_game_working = true;
+
+void stop() { is_game_working = false; }
 
 bool conf_vsync = true;
 int  conf_max_fps = 70;
@@ -46,34 +43,24 @@ int  conf_win_height = 480;
 static conf::Register _c1("conf_vsync", conf_vsync);
 static conf::Register _c2("conf_max_fps", conf_max_fps, 1, 240);
 
-static int getwinwidth(conf::Integer&) {
-	return GetScreenWidth();
-}
-
-static int getwinheight(conf::Integer&) {
-	return GetScreenHeight();
-}
-
-static void setwinheight(conf::Integer& v);
-
 static conf::HookedValue<conf::Integer> _hv1(
-	nullptr, getwinwidth, conf_win_width, 100, INT_MAX
+	nullptr, [](conf::Integer&){
+		return GetScreenWidth();
+	}, conf_win_width, 100, INT_MAX
 );
 
 static conf::HookedValue<conf::Integer> _hv2(
-	setwinheight, getwinheight, conf_win_height, 100, INT_MAX
+	nullptr, [](conf::Integer&){
+		return GetScreenHeight();
+	}, conf_win_height, 100, INT_MAX
 );
-
-static void setwinheight(conf::Integer& v) {
-	fprintf(stderr, "value pointer=%p, real %p\n", v.value, &conf_win_height);
-	fprintf(stderr, "value pointer=%p, real %p\n", v.value, _hv2.value);
-	if (v.value != &conf_win_height) throw "fuck so much!!!";
-}
 
 static conf::Register _c3("conf_win_width", _hv1);
 static conf::Register _c4("conf_win_height", _hv2);
 
-void _InitEngine() {
+lua_State* global = nullptr;
+
+void init() {
 	prof_register_thread();	 // init profiler
 	prof_begin(PROF_INIT_FREE);
 	conf::Reload(); // load settings
@@ -96,20 +83,16 @@ void _InitEngine() {
 	initAssetSystem();
 	InitAudioDevice();
 
-	// init Screen system
-	SetRootScreen(&ScrMainMenu);
-	initDToolkit();
+	global = lua::newState();
+	luaL_dostring(global, "require 'lua/main'");
 
 	// end
 	prof_end();
 }
 
-void freeScreenSystem(void);
-
-void _FreeEngine() {
+void uninit() {
 	// free screen system and current screen
-	freeDToolkit();
-	freeScreenSystem();
+	lua_close(global);
 
 	CloseAudioDevice();
 
@@ -123,7 +106,7 @@ void _FreeEngine() {
 	// DONE
 }
 
-static void _TickEngine() {
+static void tick() {
 	prof_begin(PROF_GAMETICK);
 	bool should_close = WindowShouldClose();
 
@@ -138,7 +121,15 @@ static void _TickEngine() {
 	collectAssets();
 	prof_end();
 
-	UpdateScreenSystem(should_close);	 // here all shit goes :D
+	// TODO: draw something
+	perror("in loop");
+	lua_State* L = global;
+	lua_settop(L, 0);
+	if (lua_getglobal(L, "engine_loop") != LUA_TFUNCTION ||
+			lua_pcall(L, 0, 1, -1) != LUA_OK) {
+		vflog("LUA: LOOP: %s", lua_tostring(L, -1));
+		stop();
+	};
 
 	// finalize drawing
 	prof_begin(PROF_FINDRAW);
@@ -150,22 +141,16 @@ static void _TickEngine() {
 	prof_step();
 }
 
-#include <stdio.h>
-#include <exception>
 
 // that's right!
-void GlobalEngineEntryPoint() {
+void join() {
 	try {
-		_InitEngine();
-		try {
-		while (is_game_working) _TickEngine();
-		} catch (std::exception& x) {
-			fprintf(stderr, "uncaught gametick exception : %s\n", x.what());
-		}
-		_FreeEngine();
+		while (is_game_working) tick();
 	} catch (const char* s) {
 		fprintf(stderr, "uncaught exception : %s\n", s);
 	} catch (std::exception& x) {
 		fprintf(stderr, "uncaught std::exception %s\n", x.what());
 	}
 }
+
+};
