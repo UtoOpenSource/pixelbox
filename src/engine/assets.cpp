@@ -21,10 +21,26 @@
 
 #include "assets.h"
 #include "profiler.h"
+#include "img_error.h"
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "string.h"
+#include "raygui.h"
+#include <assert.h>
+
+#define USAGE_TIMEOUT 200
+#define HASH_LEN 64
+#define TRACELOG(...) TraceLog(__VA_ARGS__);
+
+#include "vfs.h"
+
+namespace assets {
 
 enum { ASSET_NULL, ASSET_STRING, ASSET_TEXTURE, ASSET_WAVE };
 
-#define USAGE_TIMEOUT 200
 struct AssetNode {
 	struct AssetNode* next;
 	AssetID id;
@@ -37,22 +53,10 @@ struct AssetNode {
 	} data;
 };
 
-#define HASH_LEN 64
 static struct AssetNode* ASSET_MAP[HASH_LEN];
 static Texture errorTexture;
 static Wave errorWave;
 static char null_data[128] = {0};
-
-#include "img_error.h"
-
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define TRACELOG(...) TraceLog(__VA_ARGS__);
-
-#include "vfs.h"
 
 static uint8_t* loadFile(const char* fn, unsigned int* cnt) {
 	char* data = NULL;
@@ -84,7 +88,7 @@ static char* loadFileT(const char* fn) {
 	return (char*)dat;	// i don't care...
 }
 
-void initAssetSystem() {
+void init() {
 	for (int i = 0; i < HASH_LEN; i++) ASSET_MAP[i] = NULL;
 
 	SetLoadFileDataCallback(loadFile);
@@ -116,7 +120,7 @@ static void free_node(struct AssetNode* n) {
 		default:
 			break;
 	}
-	free(n);
+	::free(n);
 }
 
 static struct _FileType {
@@ -126,8 +130,6 @@ static struct _FileType {
 								 {"bmp", ASSET_TEXTURE}, {"jpg", ASSET_TEXTURE},
 								 {"gif", ASSET_TEXTURE}, {"wav", ASSET_WAVE},
 								 {"ogg", ASSET_WAVE},		 {"", ASSET_NULL}};
-
-#include <string.h>
 
 static const char* extension_pos(const char* path) {
 	const char *ext = NULL, *p = path;
@@ -173,8 +175,6 @@ static AssetID hash_string(const char* str) {	 // MurmurHash
 	return h;
 }
 
-#include "profiler.h"
-
 static struct AssetNode* new_node(const char* path) {
 	const char* ext = extension_pos(path);
 	int type = check_type(ext);
@@ -182,9 +182,9 @@ static struct AssetNode* new_node(const char* path) {
 
 	switch (type) {
 		case ASSET_STRING: {
-			prof_begin(PROF_DISK);
+			prof::begin(DEF_ENT_DISKIO);
 			char* data = LoadFileText(path);
-			prof_end();
+			prof::end();
 
 			if (!data) break;
 			int len = strlen(data) + 1;
@@ -202,9 +202,9 @@ static struct AssetNode* new_node(const char* path) {
 		case ASSET_TEXTURE: {
 			Texture2D texture;
 
-			prof_begin(PROF_DISK);
+			prof::begin(DEF_ENT_DISKIO);
 			Image img = LoadImage(path);
-			prof_end();
+			prof::end();
 
 			if (img.data == NULL) break;
 			texture = LoadTextureFromImage(img);
@@ -220,9 +220,9 @@ static struct AssetNode* new_node(const char* path) {
 			node->data.texture = texture;
 		} break;
 		case ASSET_WAVE: {
-			prof_begin(PROF_DISK);
+			prof::begin(DEF_ENT_DISKIO);
 			Wave wave = LoadWave(path);
-			prof_end();
+			prof::end();
 
 			if (!IsWaveReady(wave)) break;
 
@@ -248,7 +248,7 @@ static struct AssetNode* new_node(const char* path) {
 }
 
 static void UnloadSounds();
-void freeAssetSystem() {
+void free() {
 	UnloadSounds();
 	for (int i = 0; i < HASH_LEN; i++) {
 		struct AssetNode* n = ASSET_MAP[i];
@@ -262,9 +262,14 @@ void freeAssetSystem() {
 	UnloadTexture(errorTexture);
 }
 
-void collectAssets() {
-	int limit = 0;
+static double old = 0.0;
 
+void collect() {
+	double time = GetTime();
+	if (old > time) return;
+	old = time + 1;
+
+	int limit = 0;
 	for (int i = 0; i < HASH_LEN; i++) {
 		struct AssetNode *n = ASSET_MAP[i], *old = NULL;
 		while (n) {
@@ -299,8 +304,6 @@ static void makestr(const char* str) {
 	buff[i] = '\0';
 }
 
-#include <assert.h>
-
 static struct AssetNode* getNode(AssetID id) {
 	AssetID i = id & (HASH_LEN - 1);
 	struct AssetNode* n = ASSET_MAP[i];
@@ -314,7 +317,7 @@ static struct AssetNode* getNode(AssetID id) {
 	return NULL;
 }
 
-AssetID LookupAssetID(const char* name) {
+AssetID LookupID(const char* name) {
 	makestr(name);
 	AssetID id = hash_string(buff);
 	AssetID i = id & (HASH_LEN - 1);
@@ -334,19 +337,19 @@ AssetID LookupAssetID(const char* name) {
 	return (AssetID)(-1);
 }
 
-Texture GetTextureAsset(AssetID id) {
+Texture GetTexture(AssetID id) {
 	struct AssetNode* n = getNode(id);
 	if (!n || n->type != ASSET_TEXTURE) return errorTexture;
 	return n->data.texture;
 }
 
-const char* GetStringAsset(AssetID id) {
+const char* GetString(AssetID id) {
 	struct AssetNode* n = getNode(id);
 	if (!n || n->type != ASSET_STRING) return "error";
 	return n->data.string;
 }
 
-Wave GetWaveAsset(AssetID id) {
+Wave GetWave(AssetID id) {
 	struct AssetNode* n = getNode(id);
 	if (!n || n->type != ASSET_WAVE) {
 		perror("NO SOUND!");
@@ -406,23 +409,23 @@ static Sound* getSpace() {
 	return sound_pull + (SOUND_PULL_SIZE - 1);
 }
 
-void TakeCareSound(Sound sound) { *getSpace() = sound; }
+void CareSound(Sound sound) { *getSpace() = sound; }
 
-Sound PlayAssetSound(AssetID id, float volume, float pitch) {
-	Sound snd = LoadSoundFromWave(GetWaveAsset(id));
+Sound PlaySound(AssetID id, float volume, float pitch) {
+	Sound snd = LoadSoundFromWave(GetWave(id));
 	assert(IsSoundReady(snd));
 	SetSoundVolume(snd, volume);
 	SetSoundPitch(snd, pitch);
 	PlaySound(snd);
-	TakeCareSound(snd);
+	CareSound(snd);
 	return snd;
 }
 
-#include "raygui.h"
-
-void GuiAssetTexture(Rectangle rec, AssetID id) {
-	Texture tex = GetTextureAsset(id);
+void GuiTexture(Rectangle rec, AssetID id) {
+	Texture tex = GetTexture(id);
 
 	DrawTexturePro(tex, (Rectangle){0, 0, tex.width, tex.height}, rec,
 								 (Vector2){0, 0}, 0, WHITE);
 }
+
+};

@@ -33,6 +33,8 @@
 
 namespace conf {
 
+struct Parameter;
+
 struct Value {
 
 	Value();
@@ -42,6 +44,28 @@ struct Value {
 	virtual size_t serialize  (char* dst, size_t maxlen) = 0;
 	virtual void   showGUI(const char* name, float x, float y, float w, float h) = 0;
 };
+
+class Manager {
+	private:
+	char* filename = nullptr;
+	Parameter* list = nullptr, *last = nullptr;
+	public:
+	Manager() = default;	
+	Manager(const char* path, const char* fn = nullptr);
+	Manager(const Manager&) = delete;
+	Manager(Manager&&) = delete;
+	~Manager();
+
+	void add(const char* id, Value& value);
+	Parameter* getList();
+	Parameter* find(const char*);
+
+	void reload();
+	void save();
+
+	void clear(); // do not call!
+};
+
 
 struct Flag : public Value {
 	using valueType = bool;
@@ -127,20 +151,12 @@ struct Parameter {
 class Register {
 	Value* ptr = nullptr;
 	public:
-	Register(const char* id, Value& v);
-	Register(const char* id, Value* v); // pass new Object!!!
-	Register(const char* id, bool&);
-	Register(const char* id, int&, int, int);
-	Register(const char* id, unsigned int&, unsigned int, unsigned int);
+	Register(Manager& m, const char* id, Value& v);
+	Register(Manager& m, const char* id, Value* v); // pass new Object!!!
+	Register(Manager& m, const char* id, bool&);
+	Register(Manager& m, const char* id, int&, int, int);
+	Register(Manager& m, const char* id, unsigned int&, unsigned int, unsigned int);
 	~Register();
 };
-
-void Add(const char* id, Value& value);
-Parameter* GetList();
-
-void Reload();
-void Save();
-
-void Destroy(); // free list of the nodes
 
 };

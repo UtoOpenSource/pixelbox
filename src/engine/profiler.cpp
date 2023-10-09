@@ -18,18 +18,28 @@
  */
 
 #include "profiler.h"
+#include <thread>
+#include <mutex>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "libs/c89threads.h"
+// my lovely clocksource :D
+namespace engine {
+	double getTime();
+};
 
-const char* prof_entries_names[] = {
-		"game_tick", "inif/free", "draw",		 "draw_world",
-		"draw_fin",	 "update",		"physics", "g_collection",
-		"saveload",	 "worldgen",	"disk IO", "error"};
+namespace prof {
 
-static c89mtx_t prof_threads_mutex;
+using Mutex = std::mutex;
+using Thread = std::thread;
+using ThreadID = std::thread::id;
 
-#include <raylib.h>
-double prof_clock() { return GetTime(); }
+static Mutex threads_mutex;
+
+double prof_clock() {
+	return ::engine::getTime();
+}
 
 struct prof_item {
 	double time;
@@ -38,27 +48,36 @@ struct prof_item {
 
 struct prof_thread {
 	struct prof_item stack[255];
-	struct prof_stats data[PROF_ENTRIES_COUNT];
-	c89thrd_t id;
-	int stackpos;
-	c89mtx_t mutex;
-} prof_threads[PROF_THREADS_MAX];
+	struct prof_stats data[ENTRIES_COUNT];
+	int stackpos = -1;
+
+	const char* const* entries_names = nullptr;
+	int entries_count = 0; // must not be > than ENTRIES_COUNT
+
+	Mutex mutex;
+};
+
+static prof_thread *prof_threads_data[THREADS_MAX];
+// some atomic assumptions...
+static ThreadID    prof_threads_ids[THREADS_MAX]; 
 
 // summary history
-static struct prof_stats prof_history[PROF_THREADS_MAX]
-																		 [PROF_ENTRIES_COUNT]
-																		 [PROF_HISTORY_LEN];
+static struct prof_stats prof_history[THREADS_MAX]
+																		 [ENTRIES_COUNT]
+																		 [HISTORY_LEN];
 static int prof_history_pos = 0;
 
-#include <assert.h>
-#include <stdlib.h>
 
 static void onfree() {
-	c89mtx_destroy(&prof_threads_mutex);
-	for (int i = 0; i < PROF_THREADS_MAX; i++) {
-		c89mtx_lock(&prof_threads[i].mutex);
-		c89mtx_unlock(&prof_threads[i].mutex);
-		c89mtx_destroy(&prof_threads[i].mutex);
+	for (int i = 0; i < THREADS_MAX; i++) {
+		prof_thread *t = prof_threads_data[i];
+		if (t) {
+			t->mutex.lock();
+			t->mutex.unlock();
+			delete t;
+		}
+		prof_threads_ids[i] = ThreadID();
+		prof_threads_data[i] = nullptr;
 	}
 }
 
@@ -68,63 +87,86 @@ static int prof_initialized = 0;
 // in main thread only. Afterwards, it's safe to use :p
 static void init() {
 	if (prof_initialized) return;
-	c89mtx_init(&prof_threads_mutex, 0);
-	for (int i = 0; i < PROF_THREADS_MAX; i++) {
-		c89mtx_init(&prof_threads[i].mutex, 0);
-		prof_threads[i].stackpos = -1;
-	}
 	atexit(onfree);
 	prof_initialized = 1;
 }
 
-void prof_register_thread() {
+void register_thread(const char* const* names) {
 	init();
 
-	c89thrd_t id = c89thrd_current();
+	assert(names != nullptr);
+	ThreadID id = ::std::this_thread::get_id();
+
 	// LOCKABLE
-	c89mtx_lock(&prof_threads_mutex);
-	for (int i = 0; i < PROF_THREADS_MAX; i++) {
-		if (prof_threads[i].id == 0) {
-			prof_threads[i].id = id;
-			c89mtx_unlock(&prof_threads_mutex);
+	// we are don't care about too much locking here, since
+	// locks are happening ONLY during register/unregister!
+	threads_mutex.lock();
+
+	for (int i = 0; i < THREADS_MAX; i++) {
+		if (prof_threads_ids[i] == id) {
+			threads_mutex.unlock();
+			assert("Attemt to register same thread twice!");
 			return;
 		}
 	}
-	c89mtx_unlock(&prof_threads_mutex);
+
+	// get number of entries!
+	int count_of_entries = 0;
+	for (; count_of_entries < ENTRIES_COUNT; count_of_entries++) {
+		if (!names[count_of_entries]) break;
+	}
+
+	for (int i = 0; i < THREADS_MAX; i++) {
+		if (prof_threads_data[i] == nullptr) {
+			prof_thread* t = new prof_thread();
+			prof_threads_ids[i] = id;
+			t->stackpos = -1;
+			t->entries_count = count_of_entries;
+			t->entries_names = names;
+			prof_threads_data[i] = t;
+			threads_mutex.unlock();
+			return;
+		}
+	}
+	threads_mutex.unlock();
 	assert(0 && "Too many threads are already registered in profiler!");
 }
 
-void prof_unregister_thread() {
-	c89thrd_t id = c89thrd_current();
+void unregister_thread() {
+	ThreadID id = ::std::this_thread::get_id();
 
-	// non atomic read/write...
-	// but it should not cause problems...
-	for (int i = 0; i < PROF_THREADS_MAX; i++) {
-		if (prof_threads[i].id == id) {
-			prof_threads[i].id = 0;
+	threads_mutex.lock();
+	for (int i = 0; i < THREADS_MAX; i++) {
+		if (prof_threads_data[i] && prof_threads_ids[i] == id) {
+			delete prof_threads_data[i];
+			prof_threads_ids[i] = ThreadID();
+			prof_threads_data[i] = nullptr;
+			threads_mutex.unlock();
 			return;
 		}
 	}
-	assert(0 && "Thread is not registered!");
+	threads_mutex.unlock();
+	assert(0 && "Thread was not registered!");
 }
 
-static struct prof_thread* getctx() {
-	c89thrd_t id = c89thrd_current();
+static struct prof_thread* getctx(int *thread_index) {
+	ThreadID id = ::std::this_thread::get_id();
 
 	// NON-ATOMIC READ! Should not make problems, surely :clueless:
 	// without this assumption, we will loss A LOT in perfomance
-	for (int i = 0; i < PROF_THREADS_MAX; i++) {
-		if (c89thrd_equal(prof_threads[i].id, id)) {
-			return prof_threads + i;
+	for (int i = 0; i < THREADS_MAX; i++) {
+		if (prof_threads_data[i] && prof_threads_ids[i] == id) {
+			*thread_index = i;
+			return prof_threads_data[i];
 		}
 	}
-
+	*thread_index = -1;
 	assert(0 && "This thread was not registered!");
 }
 
 typedef struct prof_thread* ctx_t;
 
-#define GETCTX() ctx_t x = getctx();
+#define GETCTX() int thread_index = 0; ctx_t x = getctx(&thread_index);
 #define LOCK()		// c89mtx_lock(&x->mutex)
 #define UNLOCK()	// c89mtx_unlock(&x->mutex)
 
@@ -150,7 +192,6 @@ static inline struct prof_item* get(ctx_t x) {
 
 static inline bool have(ctx_t x) { return x->stackpos >= 0; }
 
-#include <string.h>
 
 /* How does it work?
  * Every time we push new profiler scope(entry), we set
@@ -173,9 +214,11 @@ static inline bool have(ctx_t x) { return x->stackpos >= 0; }
  * may work very ugly, but it works, and i don't need more :p
  */
 
-void prof_begin(int entry) {
-	assert(entry >= 0 && entry < PROF_ENTRIES_COUNT);
+void begin(int entry) {
+	assert(entry >= 0 && entry < ENTRIES_COUNT);
 	GETCTX();
+	if (entry >= x->entries_count)
+		throw "bad entry index for this thread!";
 	LOCK();
 	double time = prof_clock();
 
@@ -194,7 +237,7 @@ void prof_begin(int entry) {
 	UNLOCK();
 }
 
-void prof_end() {
+void end() {
 	GETCTX();
 	LOCK();
 	struct prof_item item = pop(x);
@@ -214,19 +257,21 @@ void prof_end() {
 	UNLOCK();
 }
 
-void prof_step() {
+void step() {
 	GETCTX();
 	LOCK();
 
-	int thread = x - prof_threads;
+	int thread = thread_index;
+	int count  = x->entries_count;
+	assert(count >= 0 && count < ENTRIES_COUNT); // corrupt?
 
-	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
+	for (int i = 0; i < count; i++) { // small optimisation
 		prof_history[thread][i][prof_history_pos] = x->data[i];
 		memset(x->data + i, 0, sizeof (struct prof_stats));
 	}
 	UNLOCK();
 	prof_history_pos++;
-	if (prof_history_pos >= PROF_HISTORY_LEN) {
+	if (prof_history_pos >= HISTORY_LEN) {
 		prof_history_pos = 0;
 	}
 }
@@ -234,12 +279,42 @@ void prof_step() {
 /*
  * the only way to get data back, but it's good enough :P
  */
-struct prof_stats* prof_summary(int entry, int thread) {
-	assert(entry >= 0 && entry < PROF_ENTRIES_COUNT);
-	assert(thread >= 0 && thread < PROF_THREADS_MAX);
+struct prof_stats* summary(int entry, int thread) {
+	assert(entry >= 0 && entry < ENTRIES_COUNT);
+	assert(thread >= 0 && thread < THREADS_MAX);
 	return prof_history[thread][entry];
 }
 
+const char*        get_name(int entry, int thread) {
+	if (thread < 0 ||
+			thread >= THREADS_MAX ||
+			entry < 0 || entry >= ENTRIES_COUNT
+	) return nullptr;
+
+	threads_mutex.lock();
+	if (!prof_threads_data[thread] ||
+			prof_threads_ids[thread] == ThreadID()) {
+		threads_mutex.unlock();
+		return nullptr;
+	}
+
+	ctx_t x = prof_threads_data[thread];
+	int count  = x->entries_count;
+	assert(count >= 0 && count < ENTRIES_COUNT);  // corrupt?
+
+	const char* res = nullptr;
+
+	if (entry < count && x) {
+		res = x->entries_names[entry];
+	}
+
+	threads_mutex.unlock();
+	return res;
+}
+
+};
+
+#include "raylib.h"
 #include "raygui.h"
 
 static Color prof_color(int entry) {
@@ -249,18 +324,19 @@ static Color prof_color(int entry) {
 	int g = !!(entry & (1 << 1));
 	int b = !!(entry & (1 << 2));
 	int h = !!(entry & (1 << 3));
-	h = h * 55;
-	r = r * 200 + h;
-	g = g * 200 + h;
-	b = b * 200 + h;
-	return (Color){r, g, b, 255};
+	h = h * 70;
+	r = r * 150 + h;
+	g = g * 150 + h;
+	b = b * 150 + h;
+	return Color{(unsigned char)r, (unsigned char)g, (unsigned char)b, 255};
 }
 
 void drawProfiler(Rectangle rec) {
+	using namespace prof;
 	Rectangle item = (Rectangle){rec.x, rec.y, 100, 10};
 
 	static int active_thrd = 0;
-	active_thrd = GuiComboBox(item, "main;2;3;4;5", active_thrd);
+	active_thrd = GuiComboBox(item, "1;2;3;4;5", active_thrd);
 
 	item.y += item.height;
 
@@ -268,12 +344,17 @@ void drawProfiler(Rectangle rec) {
 	item.width = rec.width - 5;
 	DrawRectangleRec(item, (Color){0, 0, 0, 255});
 
-	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
+	prof::ctx_t x = prof_threads_data[active_thrd];
+	if (!x) return;
+	int count = x->entries_count;
+	const char* const* names = x->entries_names;
+
+	for (int i = 0; i < x->entries_count; i++) {
 		Rectangle o = (Rectangle){item.x, item.y + i * 8, 6, 6};
 		DrawRectangleRec(o, prof_color(i));
 		o.x += 8;
 		o.width = rec.width - 5 - 8;
-		DrawText(prof_entries_names[i], o.x, o.y, 4, prof_color(i));
+		DrawText(names[i], o.x, o.y, 4, prof_color(i));
 	}
 
 	item.width = rec.width - 75;
@@ -281,19 +362,19 @@ void drawProfiler(Rectangle rec) {
 	item.height = (rec.y + rec.height) - item.y - 10;
 
 	float max_value = 1.0 / 75.0;
-	/*for (int i = 0; i < PROF_HISTORY_LEN; i++) {
-		float v = prof_summary(PROF_GAMETICK)[i].sumtime;
+	for (int i = 0; i < HISTORY_LEN; i++) {
+		float v = summary(0, active_thrd)[i].sumtime;
 		if (v > max_value) max_value = v;
-	}*/
+	}
 
 	float plot_scale = item.height / max_value;
 
-	for (int i = 0; i < PROF_ENTRIES_COUNT; i++) {
-		struct prof_stats* stat = prof_summary(i, active_thrd);
+	for (int i = 0; i < count; i++) {
+		struct prof_stats* stat = summary(i, active_thrd);
 		Color color = prof_color(i);
-		for (int ix = 0; ix < PROF_HISTORY_LEN - 1; ix++) {
-			float x = item.x + ix * item.width / PROF_HISTORY_LEN;
-			float x2 = item.x + (ix + 1) * item.width / PROF_HISTORY_LEN;
+		for (int ix = 0; ix < HISTORY_LEN - 1; ix++) {
+			float x = item.x + ix * item.width / HISTORY_LEN;
+			float x2 = item.x + (ix + 1) * item.width / HISTORY_LEN;
 			float y = stat[ix].owntime * plot_scale;
 			y = item.y + item.height - y;
 			float y2 = stat[ix + 1].owntime * plot_scale;
@@ -302,3 +383,4 @@ void drawProfiler(Rectangle rec) {
 		}
 	}
 }
+

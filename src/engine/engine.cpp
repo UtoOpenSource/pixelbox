@@ -24,11 +24,33 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <exception>
+#include <string>
+#include <vector>
+
+extern class ClockSource {
+	double oldtime; 
+	float  frame_time;
+	void init();
+
+	public:
+	double time();
+	float  delta();
+	float  tick();
+	ClockSource();
+	~ClockSource(); 
+
+} __clocksource;
 
 extern "C" void GuiLoadStyleDark();
 
+std::string getConfigDir(const char* appname);
+
 namespace engine {
 
+// engine has it's own config!
+::conf::Manager settings(getConfigDir("pixelbox").c_str(), "engine.ini");
+
+bool verbose = false;
 static bool is_game_working = true;
 
 void stop() { is_game_working = false; }
@@ -40,8 +62,8 @@ int  conf_win_height = 480;
 
 #include <limits.h>
 
-static conf::Register _c1("conf_vsync", conf_vsync);
-static conf::Register _c2("conf_max_fps", conf_max_fps, 1, 240);
+static conf::Register _c1(settings, "conf_vsync", conf_vsync);
+static conf::Register _c2(settings, "conf_max_fps", conf_max_fps, 1, 240);
 
 static conf::HookedValue<conf::Integer> _hv1(
 	nullptr, [](conf::Integer&){
@@ -55,113 +77,209 @@ static conf::HookedValue<conf::Integer> _hv2(
 	}, conf_win_height, 100, INT_MAX
 );
 
-static conf::Register _c3("conf_win_width", _hv1);
-static conf::Register _c4("conf_win_height", _hv2);
+static conf::Register _c3(settings, "conf_win_width", _hv1);
+static conf::Register _c4(settings, "conf_win_height", _hv2);
 
-lua_State* global = nullptr;
 
-void init() {
-	prof_register_thread();	 // init profiler
-	prof_begin(PROF_INIT_FREE);
-	conf::Reload(); // load settings
+/* uses _clocksource */
+double getTime() {
+	return __clocksource.time();
+}
+
+float  clockTick() {
+	return __clocksource.tick();
+}
+
+float  deltaTime() {
+	return __clocksource.delta();
+}
+
+static int init_stat = 0;
+
+void init(bool gui, const char* const* names) {
+
+	if (init_stat) throw "double init";
+	init_stat = 1 + int(gui);
+
+	prof::register_thread(names);	 // init profiler
+	prof::begin(1);
+	settings.reload(); // load settings
 
 	// raylib - set log and vsync/fps limit
-	SetTraceLogLevel(LOG_INFO);
-	if (conf_vsync) {
-		SetConfigFlags(FLAG_VSYNC_HINT);
-	} else
-		SetTargetFPS(conf_max_fps);
+	SetTraceLogLevel(verbose ? LOG_INFO : LOG_ERROR);
 
-	// init raylib window
-	InitWindow(conf_win_width, conf_win_height, "[PixelBox] : loading");
-	SetWindowState(FLAG_WINDOW_RESIZABLE);
+	if (gui) { // don't init raylib and audio in CLI state
+		if (conf_vsync) {
+			SetConfigFlags(FLAG_VSYNC_HINT);
+		} else
+			SetTargetFPS(conf_max_fps);
 
-	// set custom GUI style
-	GuiLoadStyleDark();
+		// init raylib window
+		InitWindow(conf_win_width, conf_win_height, "[PixelBox] : loading");
+		SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-	// init asset system and VFS
-	initAssetSystem();
-	InitAudioDevice();
+		// set custom GUI style
+		GuiLoadStyleDark();
 
-	global = lua::newState();
-	if (luaL_dostring(global, "require 'lua/main'") != LUA_OK) {
-		vflog("LUA: %s", luaL_tolstring(global, -1, nullptr));
-	};
+		// init asset system and VFS (asset system can't work without raylib)
+		assets::init();
 
+		// audio without window will be scary :D
+		InitAudioDevice();
+	}
+	
 	// end
-	prof_end();
+	prof::end();
+}
+
+static std::vector<UninitHook*> hooks;
+
+void   subscribeUninit(UninitHook* hook) {
+	if (!hook) throw "oh no";
+	hooks.push_back(hook);
 }
 
 void uninit() {
-	// free screen system and current screen
-	lua_close(global);
+	if (!init_stat) throw "oh no";
 
-	CloseAudioDevice();
+	for (auto &i : hooks) {
+		i->destroy();
+	}
 
-	// no need to refresh some settings now...
-	conf::Save(); // save settings here, 'cause this is last chance
+	if (init_stat > 1) { // if GUI
+		// free audio
+		CloseAudioDevice();
 
-	freeAssetSystem();	// and VFS
-	CloseWindow();
-	conf::Destroy(); // we don't need all theese parameters anymore
-	prof_unregister_thread();
+		settings.save(); // save settings here, 'cause this is last chance
 
+		assets::free();	// and VFS
+		CloseWindow();
+	}
+
+	prof::unregister_thread();
 	// DONE
-	lua::unregisterHooks(); // hehe
 }
 
-static void tick() {
-	prof_begin(PROF_GAMETICK);
+static int (*callback) (double dt, bool should_close); 
+
+static void gui_tick() {
+	prof::begin(DEF_ENT_TICK);
 	bool should_close = WindowShouldClose();
 
 	// begin drawing
-	prof_begin(PROF_FINDRAW);
 	BeginDrawing();
 	ClearBackground(RAYWHITE);
-	prof_end();
 
 	// collect usused assets
-	prof_begin(PROF_GC);
-	collectAssets();
-	prof_end();
+	prof::begin(DEF_ENT_GC);
+	assets::collect();
+	prof::end();
 
-	// TODO: draw something
-	lua_State* L = global;
-	lua_settop(L, 0);
-	
-	int err = lua_getglobal(L, "engine_loop") != LUA_TFUNCTION;
-	if (!err) {
-		lua_pushnumber(L, GetFrameTime());
-		lua_pushboolean(L, should_close);
-	}
-	if (err || lua_pcall(L, 2, 1, 0) != LUA_OK) {
-		vflog("LUA: LOOP: %s", lua_tostring(L, -1));
+	if (callback(clockTick(), should_close) != 0)
 		stop();
-	};
-	if (lua_toboolean(L, -1) != 0) {
-		stop();
-	}
 
 	// finalize drawing
-	prof_begin(PROF_FINDRAW);
 	EndDrawing();
-	prof_end();
 
-	prof_end();
+	prof::end();
 	// save profiler state at new record
-	prof_step();
+	prof::step();
+}
+
+// only GAMEPLAY YAY
+static void cli_tick() {
+	prof::begin(DEF_ENT_TICK);
+
+	if (callback(clockTick(), 0) != 0) // can't be closed from outside btw :D
+		stop();	
+
+	prof::end();
+	// save profiler state at new record
+	prof::step();
 }
 
 
 // that's right!
-void join() {
+void join(int (*cb)(double, bool)) {
+	callback = cb;
+	if (!cb) throw "callback function is required to join engine loop!";
+
 	try {
-		while (is_game_working) tick();
+		if (init_stat > 1) { // GUI
+			while (is_game_working) gui_tick();
+		} else {
+			while (is_game_working) cli_tick();
+		}
 	} catch (const char* s) {
 		fprintf(stderr, "uncaught exception : %s\n", s);
-	} catch (std::exception& x) {
+	} catch (char const* s) {
+		fprintf(stderr, "uncaught exception : %s\n", s);
+	}catch (std::exception& x) {
 		fprintf(stderr, "uncaught std::exception %s\n", x.what());
 	}
 }
 
+// utility
+
+
+int vaddformat(std::string& buff, const char* fmt, va_list orig) {
+	va_list args;
+
+	// get length
+	va_copy(args, orig);
+	int size = vsnprintf(NULL, 0, fmt, args);
+	va_end(args);
+
+	if (size <= 0) return size;
+
+	size_t curr = buff.size();
+	buff.resize(curr + size);
+	vsnprintf(&buff[0] + curr, size + 1, fmt, orig);
+	return size;
+}
+
+int addformat(std::string& buff, const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	int res = vaddformat(buff, fmt, args);
+	va_end(args);
+	return res;
+}
+
 };
+
+#include <new>
+
+void* operator new(size_t sz) {
+	void* p = malloc(sz);
+	if (!p) throw "OOM";
+	return p;
+}
+
+void* operator new[](size_t sz) {
+	void* p = malloc(sz);
+	if (!p) throw "OOM";
+	return p;
+}
+
+void* operator new[](size_t sz, size_t mul) {
+	void* p = malloc(sz * mul);
+	if (!p) throw "OOM";
+	return p;
+}
+
+void operator delete(void* p) {
+	free(p);
+}
+
+void operator delete[](void* p) {
+	free(p);
+}
+
+void operator delete(void* p, size_t) {
+	free(p);
+}
+
+void operator delete[](void* p, size_t) {
+	free(p);
+}

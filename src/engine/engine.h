@@ -29,18 +29,29 @@
 #include "random.h"
 #include "raygui.h"
 #include "settings.h"
-#include "exportlua.h"
+#include "screen.h"
 
 namespace engine {
 
-extern lua_State* global;
+class UninitHook {
+	public:
+	virtual void destroy() = 0;
+};
+
+extern bool verbose;
+extern ::conf::Manager config;
 
 void stop();
 
-void init();
+void init(bool gui, const char* const* names);
 void uninit();
 
-void join();
+void join(int (*cb)(double, bool));
+
+double getTime();
+float  deltaTime();
+
+void   subscribeUninit(UninitHook*);
 
 };
 

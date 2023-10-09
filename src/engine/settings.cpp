@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <limits.h>
+#include <string.h>
 
 namespace conf {
 
@@ -90,27 +91,27 @@ size_t Unsigned::serialize  (char* dst, size_t maxlen) {
 
 // high level api
 
-Register::Register(const char* id, Value& v) {
-	Add(id, v);
+Register::Register(Manager& m, const char* id, Value& v) {
+	m.add(id, v);
 }
 
-Register::Register(const char* id, Value* v) {
-	Add(id, *v);
+Register::Register(Manager& m, const char* id, Value* v) {
+	m.add(id, *v);
 }
 
-Register::Register(const char* id, bool& v) {
+Register::Register(Manager& m, const char* id, bool& v) {
 	ptr = new Flag(v);
-	Add(id, *ptr);
+	m.add(id, *ptr);
 }
 
-Register::Register(const char* id, int& i, int a, int b) {
+Register::Register(Manager& m, const char* id, int& i, int a, int b) {
 	ptr = new Integer(i, a, b);
-	Add(id, *ptr);
+	m.add(id, *ptr);
 }
 
-Register::Register(const char* id, unsigned int& i, unsigned int a, unsigned int b) {
+Register::Register(Manager& m, const char* id, unsigned int& i, unsigned int a, unsigned int b) {
 	ptr = new Unsigned(i, a, b);
-	Add(id, *ptr);
+	m.add(id, *ptr);
 }
 
 Register::~Register() {
@@ -135,12 +136,28 @@ void   Integer::showGUI(const char* name, float x, float y, float w, float h) {
 // keep all settings in one list
 // TODO: change on hashmap somewhat later
 
-static Parameter* list = nullptr, *last = nullptr;
-
 #include <string.h>
 #include <ctype.h>
 
-void Add(const char* id, Value& value) {
+Manager::Manager(const char* path, const char* fn) {
+	if (!fn) fn = "";
+	if (!path) path = "./";
+
+	size_t pathlen = strlen(path);
+	size_t filelen = strlen(fn);
+	size_t len = pathlen + filelen + 1;
+	this->filename = new char[len];
+	::memcpy(filename, path, pathlen);
+	::memcpy(filename + pathlen, fn, filelen);
+	filename[len-1] = 0;
+}
+
+Manager::~Manager() {
+	delete[] filename;
+	clear();
+}
+
+void Manager::add(const char* id, Value& value) {
 	Parameter* p = new Parameter();
 
 	int len = int(strlen(id))+1;
@@ -163,11 +180,11 @@ void Add(const char* id, Value& value) {
 	last = p;
 }
 
-Parameter* GetList() {
+Parameter* Manager::getList() {
 	return list;
 }
 
-Parameter* Find(const char* id) {
+Parameter* Manager::find(const char* id) {
 	Parameter* p = list;
 	while (p && strcmp(p->id, id) != 0) {
 		p = p->next;
@@ -203,9 +220,10 @@ static int getconfline(char* buff, int len, int* eqpos, FILE* f) {
 	}
 }
 
-void Reload() {
-	FILE* f = fopen("config.ini", "r");
-	perror("config opened");
+void Manager::reload() {
+	const char* fn = filename ? filename : "config.ini";
+
+	FILE* f = fopen(fn, "r");
 	if (!f) {
 		perror("Can't read config file!");
 		return;
@@ -228,7 +246,7 @@ void Reload() {
 		buff[eqpos] = '\0';
 		eqpos++;
 
-		Parameter *p = Find(buff);
+		Parameter *p = find(buff);
 		if (!p) {
 			fprintf(stderr, "config file error : bad perameter %s at line %i!\n", buff, line);
 			continue;
@@ -241,8 +259,10 @@ void Reload() {
 	fclose(f);
 }
 
-void Save() {
-	FILE* f = fopen("config.ini", "w");
+void Manager::save() {
+	const char* fn = filename ? filename : "config.ini";
+
+	FILE* f = fopen(fn, "w");
 	if (!f) {
 		perror("Can't save config file!");
 		return;
@@ -263,7 +283,10 @@ void Save() {
 		}
 		if (add > 511-len) add = 511-len;
 		len += add;
-		if (add < 0 || len > 511 || len < 0) throw "something bad happened";
+		if (add < 0 || len > 511 || len < 0) {
+			fclose(f);
+			throw "something bad happened";
+		}
 		buff[len] = '\0';
 
 		fprintf(f, "%s\n", buff);
@@ -274,7 +297,7 @@ void Save() {
 	fclose(f);
 }
 
-void Destroy() {
+void Manager::clear() {
 	while (list != nullptr) {
 		Parameter* f = list;
 		list = list->next;
@@ -285,5 +308,3 @@ void Destroy() {
 }
 
 };
-
-

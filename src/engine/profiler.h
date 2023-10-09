@@ -18,7 +18,14 @@
  */
 
 #pragma once
-#define PROF_HISTORY_LEN 255
+
+namespace prof {
+
+static constexpr int HISTORY_LEN = 255;
+
+#define DEF_ENT_TICK 0
+#define DEF_ENT_DISKIO 1
+#define DEF_ENT_GC 2
 
 /*
  * This is what differs this profiler from any another in the internet
@@ -38,24 +45,13 @@
  * objetcs for proper Z order drawing, mesh building, terrain
  * generation and etc.
  */
-enum prof_entries {
-	PROF_GAMETICK,
-	PROF_INIT_FREE,
-	PROF_DRAW,
-	PROF_DRAWWORLD,
-	PROF_FINDRAW,
-	PROF_UPDATE,
-	PROF_PHYSIC,
-	PROF_GC,
-	PROF_LOAD_SAVE,
-	PROF_GENERATOR,
-	PROF_DISK,
-	PROF_ENTRIES_COUNT
-};
+static constexpr int ENTRIES_COUNT = 16;
 
-extern const char* prof_entries_names[];
-
-#define PROF_THREADS_MAX 5
+/* 
+ * this is MAXIMUM amount of threads this profiler can handle!
+ * DO NOT make this value too big!
+ */
+static constexpr int THREADS_MAX = 5;
 
 /*
  * the SUMMARY time of every entry SHOULD be equal to sum of it's own
@@ -76,21 +72,27 @@ struct prof_stats {
 
 // implementation of very presize and stable clocksource
 // DON'T USE A DEFAULT clock() FUNCTION FROM LIBC! IT'S AWFUL!
-// I am using the GetTime() function from raylib here.
+// I am using the ~~GetTime() function from raylib~~ my own clocksource here.
 double prof_clock();
 
 /*
  * Every thread, that going to use this profiler, must be properly
  * registered and unregistered!
+ *
+ * register() function must recieve an array of profiler entries
+ * names, profiler will not allow to begin() entry with index greater
+ * than max index, specified in registered array!
+ *
+ * This array must be terminated with NULL or nullptr;
  */
-void prof_register_thread();
-void prof_unregister_thread();
+void register_thread(const char* const* names);
+void unregister_thread();
 
 /*
  * Push-Pop-like profiling
  */
-void prof_begin(int entry);
-void prof_end();
+void begin(int entry);
+void end();
 
 /*
  * Get statictics about some entry.
@@ -99,7 +101,14 @@ void prof_end();
  * in this array is useful... THat's why i am not doing that :D
  * You can draw plot right from this, it looks okay.
  */
-struct prof_stats* prof_summary(int entry, int thread);
+struct prof_stats* summary(int entry, int thread);
+
+/* 
+ * entry name... yeah
+ * returns NULL if entry does not exist or OOB.
+ * All entries forms an array, terminated by NULL
+ */
+const char*        get_name(int entry, int thread);
 
 /*
  * Call this at the end of the "Game tick", or just to finally write
@@ -112,4 +121,6 @@ struct prof_stats* prof_summary(int entry, int thread);
  * Aka, this function MAY be ONLY called after all profiling zones are
  * done.
  */
-void prof_step();
+void step();
+
+};

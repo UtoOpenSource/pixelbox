@@ -19,18 +19,21 @@
 
 #include <raylib.h>
 
-void initAssetSystem();
-void freeAssetSystem();
-void collectAssets();
+namespace assets {
 
-typedef unsigned int AssetID;
+	void init();
+	void free();
+	void collect();
 
-AssetID LookupAssetID(const char* name);
-Texture GetTextureAsset(AssetID id);
-const char* GetStringAsset(AssetID id);
-Wave GetWaveAsset(AssetID id);
+	typedef unsigned int AssetID;
 
-void GuiAssetTexture(Rectangle rec, AssetID id);
-Sound PlayAssetSound(AssetID id, float volume,
+	AssetID LookupID(const char* name);
+	Texture GetTexture(AssetID id);
+	const char* GetString(AssetID id);
+	Wave GetWave(AssetID id);
+
+	void GuiTexture(Rectangle rec, AssetID id);
+	Sound PlaySound(AssetID id, float volume,
 										 float pitch);	// already takes care!
-void TakeCareSound(Sound sound);		// take care of existent sound
+	void CareSound(Sound sound);		// take care of existent sound
+};
