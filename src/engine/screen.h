@@ -80,3 +80,28 @@ namespace screen {
 
 };
 
+extern "C" {
+	
+	struct GuiWindowCtx {
+		Rectangle rec;
+		int minw, minh;
+		bool moveable;
+		const char* title;
+		// status
+		bool moving;
+		bool hidden;
+	};
+
+	int GuiWindowConf(GuiWindowCtx* x, const char* name, Rectangle bounds, bool movable);
+
+	typedef void (*winRedrawCallback) (Rectangle bounds);
+
+	int GuiWindow(GuiWindowCtx* ctx, winRedrawCallback cb);
+	int GuiWindowCollision(GuiWindowCtx* ctx);
+
+	// controversal!
+	void GuiWindowMove(GuiWindowCtx* ctx);
+	void GuiWindowCenter(GuiWindowCtx* ctx);
+
+};
+

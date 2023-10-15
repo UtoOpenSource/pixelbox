@@ -101,8 +101,6 @@ void Manager::update(double dt) {
 void Manager::refreshGui() {
 	if (!cache) return;
 	double time = ::engine::getTime(); 
-	
-	//if (cache->oldtime > time + 1.0/32.0)
 	cache->oldtime = time;
 }
 
@@ -118,8 +116,11 @@ void Manager::draw() {
 
 		cache->begin();
 		bool rep = false;
-		if (curr) rep = curr->drawgui();
+		GuiUnlock();
 		if (debug) rep |= debug->drawgui();
+		if (rep) GuiLock();
+		if (curr) rep = curr->drawgui();
+		GuiUnlock();
 		cache->end();
 
 		double t = ::engine::getTime();
@@ -188,3 +189,67 @@ Base* Manager::getDebug() {
 
 };
 
+extern "C" {
+
+	int GuiWindowConf(GuiWindowCtx* x, const char* name, Rectangle bounds, bool moveable) {
+		if (!x) return -1;
+		x->hidden = 0;
+		x->moveable = moveable;
+		x->moving = 0;
+		x->title = name ? name : "unnamed";
+		x->rec = bounds;
+		x->minw = x->rec.width;
+		x->minh = x->rec.height;
+		return 0;
+	}
+
+	int GuiWindow(GuiWindowCtx* ctx, winRedrawCallback cb) {
+		GuiPanel(ctx->rec, ctx->title);
+		Rectangle hrec = (Rectangle) { // hide button
+			ctx->rec.x + ctx->rec.width - 20, ctx->rec.y + 2, 20, 20
+		};
+
+		int icon_kind = ctx->hidden ? ICON_ARROW_UP : ICON_ARROW_DOWN;
+	
+		if (GuiButton(hrec, GuiIconText(icon_kind, ""))) {
+			ctx->hidden = ctx->hidden;
+		}
+
+		// content rectangle
+		Rectangle bounds = (Rectangle) {
+			ctx->rec.x+5, ctx->rec.y + 30,
+			ctx->rec.width-10, ctx->rec.height - 35
+		};
+
+		if (!ctx->hidden && cb) cb(bounds); 
+		return !ctx->hidden;
+	}
+
+	int GuiWindowCollision(GuiWindowCtx* ctx) {
+		return (CheckCollisionPointRec(GetMousePosition(), ctx->rec));
+	}
+
+	// controversal!
+	void GuiWindowMove(GuiWindowCtx* ctx) {
+		Rectangle barrec = (Rectangle){
+			ctx->rec.x, ctx->rec.y,
+			ctx->rec.width, 20
+		};
+
+		if (ctx->moving && IsMouseButtonDown(0) && !GuiIsLocked()) {
+			Vector2 delta = GetMouseDelta();
+			ctx->rec.x += delta.x;
+			ctx->rec.y += delta.y;
+		} else
+			ctx->moving = 0;
+
+		if (CheckCollisionPointRec(GetMousePosition(), barrec) &&
+				IsMouseButtonPressed(0)) {
+				ctx->moving = 1;
+		}
+	}
+
+	void GuiWindowCenter(GuiWindowCtx* ctx) {
+		
+	}
+};

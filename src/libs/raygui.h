@@ -1311,7 +1311,9 @@ void GuiPanel(Rectangle bounds, const char *text)
 
     // Text will be drawn as a header bar (if provided)
     Rectangle statusBar = { bounds.x, bounds.y, bounds.width, (float)RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT };
-    if ((text != NULL) && (bounds.height < RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT*2.0f)) bounds.height = RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT*2.0f;
+
+		// why x2? it was cursed, so i fixed that :D
+    if ((text != NULL) && (bounds.height < RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT)) bounds.height = RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT;
 
     if (text != NULL)
     {
