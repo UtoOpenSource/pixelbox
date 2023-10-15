@@ -34,6 +34,7 @@ static const char* const names[] = {
 
 namespace screen {
 	extern Base* Debug;
+	extern Base* Init;
 };
 
 screen::Manager screens;
@@ -51,6 +52,7 @@ int main(int argc, char** argv) {
 
 	engine::init(1, names);
 	screens.setDebug(screen::Debug);
+	screens.setRoot(screen::Init);
 
 	engine::join(cb);
 

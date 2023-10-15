@@ -19,8 +19,21 @@
 #pragma once
 #include <stdint.h>
 
+class RNG {
+	private:
+	uint64_t state = 0;
+	uint64_t next();
+	public:
+	int32_t get();
+	double  getn(); // get normalized
+	inline int32_t operator()(void) {
+		return get();
+	}	
+	void    seed(uint64_t);
+};
+
 int32_t randomNumber(void);
-void randomizeNoise();
+void randomizeNoise(uint64_t seed);
 
 float grad1(int hash, float x);
 float grad2(int hash, float x, float y);

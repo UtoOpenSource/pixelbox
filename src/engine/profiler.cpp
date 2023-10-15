@@ -341,7 +341,7 @@ void drawProfiler(Rectangle rec) {
 	item.y += item.height;
 
 	item.height = (rec.y + rec.height) - item.y - 20;
-	item.width = rec.width - 5;
+	item.width = rec.width;
 	DrawRectangleRec(item, (Color){0, 0, 0, 255});
 
 	prof::ctx_t x = prof_threads_data[active_thrd];

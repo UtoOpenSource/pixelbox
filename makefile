@@ -20,7 +20,7 @@ pixelbox : $(OBJS)
 
 # archiver building...
 ./tools/archiver : ./tools/archiver.c
-	$(CC) $^ -I./tools/ -o ./tools/archiver -lm -lraylib -Wall -O2
+	$(CC) $^ -I./tools/ -o ./tools/archiver -lm -lraylib -Wall $(FLAGS)
 
 clean :
 	rm ./bin/*.o

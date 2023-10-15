@@ -84,6 +84,7 @@ local function better_name(name)
 end
 
 local function toccode(name, data)
+	data = data
 	name = better_name(name)
 	buff = buff .. string.format("static unsigned char %s[] = {\n\t", name)
 	for i = 1, #data do

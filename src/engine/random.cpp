@@ -42,23 +42,36 @@
  */
 
 #include "random.h"
+#include <math.h>
 
-static uint64_t rngstate = 0;
-
-static uint64_t nextState() {
-	int64_t old = rngstate;
-	rngstate = old * 6364136223846793005ULL + (105 | 1);
+uint64_t RNG::next() {
+	int64_t old = state;
+	state = old * 6364136223846793005ULL + (105 | 1);
 	return old;
 }
 
-int32_t randomNumber(void) {
-	uint64_t old = nextState();
+int32_t RNG::get(void) {
+	uint64_t old = next();
 	uint32_t sft = (((old >> 18u) ^ old) >> 27u);
 	uint32_t rot = (old >> 59u);
 	return (sft >> rot) | (sft << ((-(int32_t)rot) & 31));
 }
 
-void randomizeNoise();	// RESTORES old rng state!
+double RNG::getn() {
+	int32_t v = get();
+	uint64_t v2 = (uint64_t)get();
+  double rd = ldexp(double(v | (uint64_t(v2) << 32)), -64);
+	return rd;
+}
+
+void RNG::seed(uint64_t seed) {
+	state = 0;
+	next();
+	state = state ^ seed;
+	next();
+}
+
+void randomizeNoise(uint64_t seed);
 
 /*
  * END OF MIT-LICENSED CODE!!!!
@@ -142,20 +155,21 @@ static unsigned char perm[] = {
 		205, 93,	222, 114, 67,	 29,	24,	 72,	243, 141, 128, 195, 78,
 		66,	 215, 61,	 156, 180};
 
-void randomizeNoise() {	 // my extension
+void randomizeNoise(uint64_t seed) {	 // my extension
 	bool done[256] = {0};
-	uint64_t old = rngstate;
+
+	RNG random;
+	random.seed(seed);
 
 	for (int i = 0; i < 256; i++) {
-		uint8_t val = randomNumber();
+		uint8_t val = random();
 		while (done[val]) {	 // unique random generation
-			val = randomNumber();
+			val = random();
 		}
 		perm[i] = val;
 		perm[i + 256] = val;
 		done[val] = true;
 	}
-	rngstate = old;	 // restore old state
 }
 
 //---------------------------------------------------------------------

@@ -204,21 +204,26 @@ extern "C" {
 	}
 
 	int GuiWindow(GuiWindowCtx* ctx, winRedrawCallback cb) {
-		GuiPanel(ctx->rec, ctx->title);
+		Rectangle real = ctx->rec;
+		if (ctx->hidden) real.height = 20;
+
+		GuiPanel(real, ctx->title);
 		Rectangle hrec = (Rectangle) { // hide button
 			ctx->rec.x + ctx->rec.width - 20, ctx->rec.y + 2, 20, 20
 		};
 
+		DrawText(TextFormat("%f:%f",  ctx->rec.width, ctx->rec.height),
+				ctx->rec.x, ctx->rec.y, 20, RED);
 		int icon_kind = ctx->hidden ? ICON_ARROW_UP : ICON_ARROW_DOWN;
-	
+
 		if (GuiButton(hrec, GuiIconText(icon_kind, ""))) {
-			ctx->hidden = ctx->hidden;
+			ctx->hidden = !ctx->hidden;
 		}
 
 		// content rectangle
 		Rectangle bounds = (Rectangle) {
-			ctx->rec.x+5, ctx->rec.y + 30,
-			ctx->rec.width-10, ctx->rec.height - 35
+			ctx->rec.x+5, ctx->rec.y + 25,
+			ctx->rec.width-10, ctx->rec.height - 30
 		};
 
 		if (!ctx->hidden && cb) cb(bounds); 
@@ -226,7 +231,9 @@ extern "C" {
 	}
 
 	int GuiWindowCollision(GuiWindowCtx* ctx) {
-		return (CheckCollisionPointRec(GetMousePosition(), ctx->rec));
+		Rectangle real = ctx->rec;
+		if (ctx->hidden) real.height = 20;
+		return (CheckCollisionPointRec(GetMousePosition(), real));
 	}
 
 	// controversal!
@@ -236,12 +243,24 @@ extern "C" {
 			ctx->rec.width, 20
 		};
 
+		Rectangle real = ctx->rec;
+		if (ctx->hidden) real.height = 20;
+
 		if (ctx->moving && IsMouseButtonDown(0) && !GuiIsLocked()) {
 			Vector2 delta = GetMouseDelta();
 			ctx->rec.x += delta.x;
 			ctx->rec.y += delta.y;
 		} else
 			ctx->moving = 0;
+
+		// bounds checking
+		if (ctx->rec.x < 0) ctx->rec.x = 0;
+		if (ctx->rec.y < 0) ctx->rec.y = 0;
+		if (ctx->rec.x + ctx->rec.width > GetScreenWidth())
+			ctx->rec.x = GetScreenWidth() - ctx->rec.width;
+		if (ctx->rec.y + real.height > GetScreenHeight())
+			ctx->rec.y = GetScreenHeight() - real.height;
+
 
 		if (CheckCollisionPointRec(GetMousePosition(), barrec) &&
 				IsMouseButtonPressed(0)) {
@@ -250,6 +269,23 @@ extern "C" {
 	}
 
 	void GuiWindowCenter(GuiWindowCtx* ctx) {
-		
+		float x = GetScreenWidth() / 5.0;
+		float y = GetScreenHeight() / 5.0;
+		float w = x * 4;
+		float h = y * 4;
+
+		// redo
+		if (!ctx->moveable || (ctx->minh < h || ctx->minw < w)) {
+			float hw = GetScreenWidth()/2.0;	
+			float hh = GetScreenHeight()/2.0;	
+			w = ctx->minw;
+			h = ctx->minh;
+			x = hw - w/2.0;
+			y = hh - h/2.0;
+		}
+
+		ctx->rec = (Rectangle) {
+			x, y, w, h
+		};
 	}
 };
