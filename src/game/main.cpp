@@ -29,12 +29,13 @@ std::string getCacheDir(const char* appname);
 std::string getDataDir(const char* appname);
 
 static const char* const names[] = {
-	"tick", "disk_io", "gc", "draw", NULL
+	"tick", "disk_io", "gc", "draw", // theese four are MANDATORY for main thread! (Used by the engine!)
+	NULL
 };
 
 namespace screen {
 	extern Base* Debug;
-	extern Base* Init;
+	extern Base* Test;
 };
 
 screen::Manager screens;
