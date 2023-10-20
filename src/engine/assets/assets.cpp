@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 #include "assets.h"
-#include "profiler.h"
+#include "utils/profiler.h"
 #include "img_error.h"
 
 #include <stdint.h>

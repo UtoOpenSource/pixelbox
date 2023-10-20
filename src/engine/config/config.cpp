@@ -17,7 +17,7 @@
  * <https://www.gnu.org/licenses/>
  */
 
-#include "settings.h"
+#include "config.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <limits.h>

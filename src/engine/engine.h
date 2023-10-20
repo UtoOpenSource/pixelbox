@@ -24,11 +24,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "assets.h"
-#include "profiler.h"
-#include "random.h"
-#include "raygui.h"
-#include "settings.h"
+#include "assets/assets.h"
+#include "utils/profiler.h"
+#include "utils/random.h"
+#include "raylib/raywrap.h"
+#include "config/config.h"
 #include "screen.h"
 
 namespace engine {

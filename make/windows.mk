@@ -30,7 +30,7 @@ $(BIN_DIR)/%.c.o : ./src/%.c
 
 $(BIN_DIR)/%.cpp.o : ./src/%.cpp
 	mkdir -p $(dir $@)
-	$(WCXX) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS)
+	$(WCXX) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS) $(XFLAGS)
 
 -include $(DEPS)
 

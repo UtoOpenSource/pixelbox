@@ -19,9 +19,8 @@
 
 #pragma once
 
-#include "assets.h"
-#include "raygui.h"
-#include "raylib.h"
+#include "assets/assets.h"
+#include "raylib/raywrap.h"
 
 namespace screen {
 

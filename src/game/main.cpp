@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
 
 	engine::init(1, names);
 	screens.setDebug(screen::Debug);
-	screens.setRoot(screen::Init);
+	screens.setRoot(screen::Test);
 
 	engine::join(cb);
 

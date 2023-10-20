@@ -19,6 +19,6 @@ $(BIN_DIR)/%.c.o: ./src/%.c
 
 $(BIN_DIR)/%.cpp.o : ./src/%.cpp
 	mkdir -p $(dir $@)
-	$(CXX) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS)
+	$(CXX) -c $< -o $@ -Wall -Wextra $(FLAGS) $(INCS) $(XFLAGS)
 
 -include $(DEPS)
