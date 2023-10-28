@@ -82,6 +82,8 @@ void Manager::release() {
 	}
 }
 
+static Rectangle back_rec = Rectangle{5, 5, 64, 25};
+
 void Manager::update(double dt) {
 	if (next) { // oh no
 		next->prev = curr;
@@ -90,8 +92,14 @@ void Manager::update(double dt) {
 			curr->hidden();
 		}
 		curr = next;
-		next->shown();
+		curr->shown();
 		next = nullptr;
+	}
+
+	if ( curr && curr->prev && 
+		CheckCollisionPointRec(GetMousePosition(), back_rec)
+	) {
+		this->refreshGui();
 	}
 
 	if (debug) debug->update(dt);
@@ -120,6 +128,16 @@ void Manager::draw() {
 		if (debug) rep |= debug->drawgui();
 		if (rep) GuiLock();
 		if (curr) rep = curr->drawgui();
+	
+		if (curr && curr->prev) {
+			if (GuiButton(Rectangle{5, 5, 64, 25}, "< Back")) {
+				this->setPrev(nullptr);
+			}
+			if (CheckCollisionPointRec(GetMousePosition(), back_rec)) {
+				rep |= 1;
+			}
+		}
+
 		GuiUnlock();
 		cache->end();
 
@@ -189,8 +207,6 @@ Base* Manager::getDebug() {
 
 };
 
-extern "C" {
-
 	int GuiWindowConf(GuiWindowCtx* x, const char* name, Rectangle bounds, bool moveable) {
 		if (!x) return -1;
 		x->hidden = 0;
@@ -203,22 +219,26 @@ extern "C" {
 		return 0;
 	}
 
-	int GuiWindow(GuiWindowCtx* ctx, winRedrawCallback cb) {
+	void GuiWindowImpl(GuiWindowCtx* ctx) {
 		Rectangle real = ctx->rec;
 		if (ctx->hidden) real.height = 20;
 
-		GuiPanel(real, ctx->title);
 		Rectangle hrec = (Rectangle) { // hide button
 			ctx->rec.x + ctx->rec.width - 20, ctx->rec.y + 2, 20, 20
 		};
 
-		DrawText(TextFormat("%f:%f",  ctx->rec.width, ctx->rec.height),
-				ctx->rec.x, ctx->rec.y, 20, RED);
 		int icon_kind = ctx->hidden ? ICON_ARROW_UP : ICON_ARROW_DOWN;
 
 		if (GuiButton(hrec, GuiIconText(icon_kind, ""))) {
 			ctx->hidden = !ctx->hidden;
 		}
+	}
+
+	int GuiWindow(GuiWindowCtx* ctx, std::function<void(Rectangle)> cb) {
+		Rectangle real = ctx->rec;
+		if (ctx->hidden) real.height = 20;
+
+		GuiPanel(real, ctx->title);
 
 		// content rectangle
 		Rectangle bounds = (Rectangle) {
@@ -227,6 +247,7 @@ extern "C" {
 		};
 
 		if (!ctx->hidden && cb) cb(bounds); 
+		GuiWindowImpl(ctx);
 		return !ctx->hidden;
 	}
 
@@ -288,4 +309,3 @@ extern "C" {
 			x, y, w, h
 		};
 	}
-};

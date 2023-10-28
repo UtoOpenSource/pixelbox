@@ -128,6 +128,7 @@ namespace pb {
 	class Abstract {
 		public:
 		Abstract(const Abstract&) = delete;
+		Abstract& operator=(const Abstract&); // you often don't want it
 		virtual ~Abstract() = 0;
 	};
 
@@ -136,22 +137,6 @@ namespace pb {
 	 * abstract or more.
 	 */
 
-	// chunks container (and more probably)
-	// only IN RAM things, IO processed separately
-	// by connection to the server or using the database
-	// in Server implementation.
-	// also, we're using static polymorphism here :D
-	class WorldBase;
-
-	template <class Derived>
-	class ConcreteWorld;
-
-	// base classes
-	class ClientBase;
-	class ServerBase;
-
-	// renderer on top of the container
-	class ChunkRenderBase;
 };
 
 

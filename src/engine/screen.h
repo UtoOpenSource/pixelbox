@@ -21,6 +21,7 @@
 
 #include "assets/assets.h"
 #include "raylib/raywrap.h"
+#include <functional>
 
 namespace screen {
 
@@ -79,8 +80,6 @@ namespace screen {
 
 };
 
-extern "C" {
-	
 	struct GuiWindowCtx {
 		Rectangle rec;
 		int minw, minh;
@@ -93,14 +92,9 @@ extern "C" {
 
 	int GuiWindowConf(GuiWindowCtx* x, const char* name, Rectangle bounds, bool movable);
 
-	typedef void (*winRedrawCallback) (Rectangle bounds);
-
-	int GuiWindow(GuiWindowCtx* ctx, winRedrawCallback cb);
+	int GuiWindow(GuiWindowCtx* ctx, std::function<void(Rectangle)> cb);
 	int GuiWindowCollision(GuiWindowCtx* ctx);
 
 	// controversal!
 	void GuiWindowMove(GuiWindowCtx* ctx);
 	void GuiWindowCenter(GuiWindowCtx* ctx);
-
-};
-

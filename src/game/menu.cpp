@@ -19,10 +19,15 @@
 
 #include "engine.h"
 #include "screen.h"
+#include "game.hpp"
 
-static RNG _randgen;
+namespace screen {
+	extern Base* Server;
+	extern Base* Client;
+	extern Base* Local;
+};
 
-static class Instance : public screen::Base {
+static class : public screen::Base {
 	GuiWindowCtx win;
 
 	void shown() {
@@ -36,15 +41,31 @@ static class Instance : public screen::Base {
 	void hidden() {}
 
 	bool drawgui() {
-		GuiWindow(&win, [](Rectangle rec) {
-			Rectangle a = {rec.x, rec.y, rec.width, rec.height/2.0f};
-			if (GuiButton(a, "Problems?")) {
-				assets::PlaySound(assets::LookupID("assets/levelup.ogg"), 
-					1, 0.9 + _randgen.getn() * 0.2
-				);
+		GuiWindow(&win, [this](Rectangle rec) {
+			Rectangle a = {rec.x, rec.y+5, rec.width, rec.height/4.0f-25};
+			int h = a.height + 5;
+
+			if (GuiButton(a, "Singleplayer")) {
+				this->manager->setNext(screen::Local);
 			};
-			a.y += a.height;
-			assets::GuiTexture(a, assets::LookupID("assets/shit_maker.png"));
+			a.y += h;
+			
+			if (GuiButton(a, "Multiplayer")) {
+				this->manager->setNext(screen::Client);
+			};
+			a.y += h;
+
+			if (GuiButton(a, "Create Server")) {
+				this->manager->setRoot(screen::Server);
+			};
+			a.y += h;
+
+			if (GuiButton(a, "Settings")) {
+
+			};
+			a.y += h;
+			
+			
 		});	
 		return false;
 	}
@@ -59,5 +80,5 @@ static class Instance : public screen::Base {
 } _scr;
 
 namespace screen {
-	Base* Test = &_scr;
+	Base* Menu = &_scr;
 };
