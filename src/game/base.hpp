@@ -116,7 +116,7 @@ namespace pb {
 			}
 		}
 		void unlock() {
-			lo.clear(std::memory_order_release);
+			lo.store(false, std::memory_order_release);
 		}
 	};
 

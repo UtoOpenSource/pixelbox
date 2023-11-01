@@ -26,7 +26,7 @@ namespace pb {
 	static const char VERSION_PATCH = 0;
 	static const char VERSION_ID = 
 		VERSION_MAJOR*100 + VERSION_MINOR*10 + VERSION_PATCH;
-	
+
 };
 
 

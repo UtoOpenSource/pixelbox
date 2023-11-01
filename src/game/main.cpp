@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string>
+#include "doctest.h"
+#include "game.hpp"
 
 int addformat(std::string& buff, const char* fmt, ...);
 
@@ -53,6 +55,26 @@ int main(int argc, char** argv) {
 	bool is_client = true;
 	const char* world_name = nullptr; 
 	::engine::verbose = 1;
+
+	for (int i = 1; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			switch (argv[i][1]) {
+				case 'v' :
+					printf("ver = %1i.%1i\n", pb::VERSION_MAJOR, pb::VERSION_MINOR);
+				break;
+				case 't' :
+					printf("unit testing started up!\n");
+					// unit-testing
+					doctest::Context context(argc - i, argv + i);
+					int res = context.run();
+					if (context.shouldExit() || res) {
+						printf("Test failed or user wants to stop\n");
+						return res;
+					}
+				break;
+			};
+		}
+	}
 
 	engine::init(1, names);
 	screens.setDebug(screen::Debug);

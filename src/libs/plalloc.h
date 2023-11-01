@@ -66,6 +66,10 @@
 #ifndef _plalloc_h_
 #define _plalloc_h_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct plalloc_s* plalloc_t;
 
 /*
@@ -110,6 +114,15 @@ void      plalloc_uninitialize(plalloc_t alloc);
  */
 void*     plalloc_alloc(plalloc_t alloc);
 void      plalloc_free (plalloc_t, void*);
+
+/*
+ * debug
+ */
+size_t    plalloc_count(plalloc_t); 
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* _plalloc_h_ */
 
@@ -281,6 +294,21 @@ static void sanitize_page(plalloc_t alloc, struct alloc_page* p, int check_all) 
 	}
 }
 )
+
+size_t plalloc_count(plalloc_t alloc) {
+	if (!alloc) return 0;
+	struct alloc_page* n = alloc->list, *f = NULL;
+
+	size_t cnt = 0;
+
+	while (n) {
+		f = n;
+		n = n->next;
+		SANITY_CODE(sanitize_page(alloc, f, 1));
+		cnt += f->count;
+	}
+	return cnt;
+}
 
 void destroypage(plalloc_t alloc, struct alloc_page* p) {
 	int leaks = 0;

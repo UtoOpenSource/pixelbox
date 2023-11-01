@@ -61,6 +61,9 @@ namespace pb {
 		inline bool operator==(const ChunkPos& b) const {
 			return getX() == b.getX() && getY()==b.getY();
 		}
+		inline bool operator!=(const ChunkPos& b) const {
+			return !(*this == b);
+		}
 	};
 
 	// important in some cases
@@ -101,28 +104,27 @@ namespace pb {
 		0xAF // unique
 	);
 
-	enum ChunkFlags {
-		CHUNK_READY      = 0x1;
-		CHUNK_RESERVED1  = 0x2;
-		CHUNK_RESERVED2  = 0x4;
-		CHUNK_NEWGEN     = 0x8;  // gc not traversed this chunk yet
-		CHUNK_COLLECTED  = 0x10; // remove this chunk from everything
-		CHUNK_QUPDATE    = 0x20; // Chunk is in update queue
-		CHUNK_QPLAYER    = 0x40; // Chunk is in player(s) visibility queue
-		CHUNK_RESERVED3  = 0x80;
+	struct ChunkFlags {
+		bool is_ready    : 1;
+		bool is_newgen   : 1;
+		bool is_colleted : 1; // remove this chunk from everything
+		bool is_updating : 1;
+		bool is_playing  : 1;
 	};
 
-	template <uint8_t DEFAULT_USAGE>
+	static constexpr uint8_t DEFAULT_USAGE = 20;
+
 	class BaseChunk : public Default, Shared {
 		public: // info
 		ChunkPos position;
 		uint8_t usage_factor = DEFAULT_USAGE;
+		ChunkFlags flags;
 		public: // data
 		ChunkData data[2];
 		bool      index;
 		public: 
 		BaseChunk(ChunkPos p) : position(p) {};
-		
+		~BaseChunk(){}
 	};
 
 };
