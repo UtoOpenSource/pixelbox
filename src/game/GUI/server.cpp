@@ -45,8 +45,6 @@ static class : public screen::Base {
 					1, 0.9 + _randgen.getn() * 0.2
 				);
 			};
-			a.y += a.height;
-			assets::GuiTexture(a, assets::LookupID("assets/shit_maker.png"));
 		});	
 		return false;
 	}

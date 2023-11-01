@@ -1,7 +1,7 @@
 <map version="freeplane 1.11.5">
 <!--To view this file, download free mind mapping software Freeplane from https://www.freeplane.org -->
 <node TEXT="PIXELBOX" LOCALIZED_STYLE_REF="AutomaticLayout.level.root" FOLDED="false" ID="ID_1090958577" CREATED="1409300609620" MODIFIED="1698416665535" CHILD_NODES_LAYOUT="LEFTTORIGHT_BOTHSIDES_CENTERED"><hook NAME="MapStyle" background="#2e3440">
-    <properties show_icon_for_attributes="true" edgeColorConfiguration="#808080ff,#ff0000ff,#0000ffff,#00ff00ff,#ff00ffff,#00ffffff,#7c0000ff,#00007cff,#007c00ff,#7c007cff,#007c7cff,#7c7c00ff" show_note_icons="true" fit_to_viewport="false" associatedTemplateLocation="template:/dark_nord_template.mm"/>
+    <properties fit_to_viewport="false" show_icon_for_attributes="true" show_note_icons="true" edgeColorConfiguration="#808080ff,#ff0000ff,#0000ffff,#00ff00ff,#ff00ffff,#00ffffff,#7c0000ff,#00007cff,#007c00ff,#7c007cff,#007c7cff,#7c7c00ff" associatedTemplateLocation="template:/dark_nord_template.mm"/>
 
 <map_styles>
 <stylenode LOCALIZED_TEXT="styles.root_node" STYLE="oval" UNIFORM_SHAPE="true" VGAP_QUANTITY="24 pt">
@@ -77,7 +77,11 @@
 </hook>
 <hook NAME="accessories/plugins/AutomaticLayout.properties" VALUE="ALL"/>
 <font BOLD="true"/>
-<node TEXT="CLIENT" POSITION="top_or_left" ID="ID_1680090100" CREATED="1698416696341" MODIFIED="1698416803355"/>
+<node TEXT="CLIENT" POSITION="top_or_left" ID="ID_1680090100" CREATED="1698416696341" MODIFIED="1698416803355">
+<node TEXT="GUI" ID="ID_889583141" CREATED="1698484013066" MODIFIED="1698484025613"/>
+<node TEXT="LOGIC" ID="ID_537319182" CREATED="1698484029354" MODIFIED="1698484042235"/>
+<node TEXT="INFRASTRUCTURE" ID="ID_1999709792" CREATED="1698484043809" MODIFIED="1698484048408"/>
+</node>
 <node TEXT="INFRASTRUCTURE" POSITION="bottom_or_right" ID="ID_574215914" CREATED="1698416700406" MODIFIED="1698416789659" VSHIFT_QUANTITY="-39 pt">
 <node TEXT="ENGINE" ID="ID_1572330503" CREATED="1698416717468" MODIFIED="1698416721697">
 <node TEXT="ASSETS" ID="ID_864552228" CREATED="1698416723279" MODIFIED="1698416728091"/>
@@ -90,6 +94,10 @@
 </node>
 <node TEXT="ENET" ID="ID_289685742" CREATED="1698416773891" MODIFIED="1698416777897"/>
 </node>
-<node TEXT="SERVER" POSITION="top_or_left" ID="ID_521304657" CREATED="1698416703323" MODIFIED="1698416715826"/>
+<node TEXT="SERVER" POSITION="top_or_left" ID="ID_521304657" CREATED="1698416703323" MODIFIED="1698416715826">
+<node TEXT="INFRASTRUCTURE" ID="ID_1329227670" CREATED="1698484050418" MODIFIED="1698484056359"/>
+<node TEXT="LOGIC" ID="ID_906586083" CREATED="1698484058562" MODIFIED="1698484061999"/>
+<node TEXT="GUI" ID="ID_1674198404" CREATED="1698484064530" MODIFIED="1698484066839"/>
+</node>
 </node>
 </map>
