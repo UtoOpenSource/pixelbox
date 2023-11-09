@@ -129,7 +129,7 @@ namespace pb {
 	// can't allocate objects! can only keep them inside.
 	// gigaconfigurable hash container with reference consistency(until node is deleted)
 	// and extreme flexibility trough the HashAccessor interface.
-	// (Warning: whire references are ok, iterator will still be invalidated after the
+	// (Warning: while references are ok, iterator will still be invalidated after the
 	// rehash!)
 	//
 	// No need for separate node objects : you specify where is key/hash/next node
@@ -140,7 +140,7 @@ namespace pb {
 	// Warning: this is NOT full replacement for hashmaps, this is a CORE of the hashmap
 	// classes and components.
 	// Because of that, you must explicitly destroy objects after removal and 
-	// explicitly allocate them, and also you mustdestroy them all before container
+	// explicitly allocate them, and also you must destroy them all before container
 	// destruction, in other case you will likely have memory leak.
 	// But if you have linear allocator, this might be not the case.
 	template <typename T, typename HACS = HashAccessor<T> >
@@ -164,7 +164,7 @@ namespace pb {
 			return (loglen>=0) ? (1 << (loglen)) : 0; // just extra checks
 		}
 		size_t hashmask() const {
-			return (1<<getlen(loglen))-1;
+			return getlen(loglen)-1;
 		}
 		static int    logof(size_t len) {
 			if (len == 0) return -1;

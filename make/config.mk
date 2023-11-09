@@ -13,7 +13,7 @@ DIRSX := $(shell find ./src/ -maxdepth 1 -mindepth 1 -type d -not -name '*old*')
 DIRS  := $(shell find ./src/ -maxdepth 1 -type d -not -name '*old*')
 
 # default c compiler flags for source files
-FLAGS ?= -Og -fsanitize=address
+FLAGS ?= -Og -fsanitize=undefined
 XFLAGS ?= -std=c++17
 
 # c compiler flags for linking all object files in target ./pixelbox[.exe]

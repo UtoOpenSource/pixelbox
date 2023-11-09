@@ -23,6 +23,7 @@
 #include <string>
 #include "doctest.h"
 #include "game.hpp"
+#include "enet.h"
 
 int addformat(std::string& buff, const char* fmt, ...);
 
@@ -55,6 +56,7 @@ int main(int argc, char** argv) {
 	bool is_client = true;
 	const char* world_name = nullptr; 
 	::engine::verbose = 1;
+	enet_initialize();
 
 	for (int i = 1; i < argc; i++) {
 		if (argv[i][0] == '-') {
@@ -85,4 +87,5 @@ int main(int argc, char** argv) {
 	// important
 	screens.release();
 	engine::uninit();
+	enet_deinitialize();
 }

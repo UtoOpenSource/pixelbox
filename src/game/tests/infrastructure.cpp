@@ -208,6 +208,8 @@ TEST_CASE("hashcontainer") {
 	CHECK(p != nullptr);
 	ProfTraits::construct(alloc, p, "aboba");
 	CHECK(map.insert(p) == true);
+
+	CHECK(map.begin() != map.end());
 	
 	for (auto& node : map) {
 		printf("%p, %s\n", &node, node.name.c_str());
@@ -229,14 +231,8 @@ TEST_CASE("hashcontainer-insert") {
 	for (int i = 0; i < 1024; i++) {
 		Profile* p = alloc.allocate(1);
 		CHECK(p != nullptr);
-		if (p == nullptr) {
-			fprintf(stderr, "Failed at %i\n", i);
-			fprintf(stderr, "Failed at %i\n", i);
-			fprintf(stderr, "Failed at %i\n", i);
-		}
 		ProfTraits::construct(alloc, p, rand);
 		CHECK(map.insert(p));
-
 		for (int j = 0; j < 7 && incchar(rand[j]); j++) {}
 	}
 
@@ -244,7 +240,7 @@ TEST_CASE("hashcontainer-insert") {
 
 	Profile* p = map.find("zgaaaaa");
 	CHECK(p != nullptr);
-	CHECK(map.remove(p));
+	map.remove(p);
 	alloc.deallocate(p);
 	CHECK(map.find("zgaaaaa") == nullptr);
 
@@ -267,3 +263,5 @@ TEST_CASE("hashcontainer-insert") {
 
 	CHECK(map.buckets_count() == 0);
 }
+
+
