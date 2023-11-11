@@ -41,6 +41,9 @@ static class Debug : public screen::Base {
 		return false;
 	}
 
+	bool collision(Vector2) {
+		return GuiWindowCollision(&win);
+	}
 
 	void update(float dt) {
 		GuiWindowMove(&win);

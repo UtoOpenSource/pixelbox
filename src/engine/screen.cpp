@@ -26,6 +26,7 @@ Base::~Base() {}
 void Base::update(float dt) {}
 void Base::drawback() {}
 bool Base::drawgui() {return false;}
+bool Base::collision(Vector2 vec) {return false;}
 void Base::shown() {}
 void Base::hidden() {}
 
@@ -101,9 +102,23 @@ void Manager::update(double dt) {
 	) {
 		this->refreshGui();
 	}
+	
+	Vector2 pos = GetMousePosition();
+	int stat = 0;
+	if (curr->collision(pos)) stat = 1;
+	else if (debug->collision(pos)) stat = 2;
 
-	if (debug) debug->update(dt);
-	if (curr) curr->update(dt);
+	GuiLock();
+	if (curr) {
+		if (stat == 1) GuiUnlock();
+		curr->update(dt);
+		GuiLock();
+	}
+	if (debug) { 
+		if (stat == 2) GuiUnlock();
+		debug->update(dt);
+	}
+	GuiUnlock();
 }
 
 void Manager::refreshGui() {
@@ -114,8 +129,8 @@ void Manager::refreshGui() {
 
 void Manager::draw() {
 	if (!cache) cache = new GuiCache();
-	if (curr) curr->drawback();
 	if (debug) debug->drawback();
+	if (curr) curr->drawback();
 
 	double t = ::engine::getTime();
 
@@ -124,10 +139,25 @@ void Manager::draw() {
 
 		cache->begin();
 		bool rep = false;
+
+		Vector2 pos = GetMousePosition();
+		int stat = 0;
+		if (curr->collision(pos)) stat = 1;
+		else if (debug->collision(pos)) stat = 2;
+
+		GuiLock();
+
+		if (debug) {
+			if (stat == 2) GuiUnlock();
+			rep |= debug->drawgui();
+			GuiLock();
+		}
+
+		if (curr) {
+			if (stat == 1) GuiUnlock();
+			rep |= curr->drawgui();
+		}
 		GuiUnlock();
-		if (debug) rep |= debug->drawgui();
-		if (rep) GuiLock();
-		if (curr) rep = curr->drawgui();
 	
 		if (curr && curr->prev) {
 			if (GuiButton(Rectangle{5, 5, 64, 25}, "< Back")) {
@@ -138,7 +168,6 @@ void Manager::draw() {
 			}
 		}
 
-		GuiUnlock();
 		cache->end();
 
 		double t = ::engine::getTime();

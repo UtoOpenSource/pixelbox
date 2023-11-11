@@ -34,9 +34,10 @@ namespace screen {
 		public:
 		Base() = default;
 		virtual ~Base() = 0;
-		virtual void update(float dt);
+		virtual void update(float dt); // both gui and bg
 		virtual void drawback();
 		virtual bool drawgui();
+		virtual bool collision(Vector2 bounds);
 		virtual void shown();
 		virtual void hidden();
 	};

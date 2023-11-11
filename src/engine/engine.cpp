@@ -59,6 +59,7 @@ bool conf_vsync = true;
 int  conf_max_fps = 70;
 int  conf_win_width = 640;
 int  conf_win_height = 480;
+float conf_m_volume = 1.0f;
 
 #include <limits.h>
 
@@ -77,8 +78,16 @@ static conf::HookedValue<conf::Integer> _hv2(
 	}, conf_win_height, 100, INT_MAX
 );
 
+static conf::HookedValue<conf::Float> _hv3(
+	[](conf::Float& vv){
+		if (IsAudioDeviceReady())
+			SetMasterVolume(*(vv.value));
+	}, nullptr, conf_m_volume, 0.0f, 1.0f
+);
+
 static conf::Register _c3(settings, "conf_win_width", _hv1);
 static conf::Register _c4(settings, "conf_win_height", _hv2);
+static conf::Register _c5(settings, "conf_m_volume", _hv3);
 
 
 /* uses _clocksource */
@@ -126,6 +135,7 @@ void init(bool gui, const char* const* names) {
 
 		// audio without window will be scary :D
 		InitAudioDevice();
+		SetMasterVolume(conf_m_volume);
 	}
 	
 	// end

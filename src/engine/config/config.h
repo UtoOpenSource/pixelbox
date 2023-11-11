@@ -106,6 +106,19 @@ struct Unsigned : public Value {
 	virtual void   showGUI(const char* name, float x, float y, float w, float h);
 };
 
+struct Float : public Value {
+	using valueType = float;
+
+	float* value; float min, max;
+
+	Float(float& value, float min, float max);
+	virtual ~Float();
+
+	virtual bool   deserialize(const char* src, size_t maxlen);
+	virtual size_t serialize  (char* dst, size_t maxlen);
+	virtual void   showGUI(const char* name, float x, float y, float w, float h);
+};
+
 // a quick way to add getters/setters(hooks) for your values!
 template <class T>
 struct HookedValue : public T {
@@ -156,6 +169,7 @@ class Register {
 	Register(Manager& m, const char* id, bool&);
 	Register(Manager& m, const char* id, int&, int, int);
 	Register(Manager& m, const char* id, unsigned int&, unsigned int, unsigned int);
+	Register(Manager& m, const char* id, float&, float, float);
 	~Register();
 };
 

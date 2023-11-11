@@ -58,7 +58,6 @@ bool   Integer::deserialize(const char* src, size_t maxlen) {
 	*value = tmp;
 	if (*value < min) *value = min;
 	else if (*value > max) *value = max;
-	fprintf(stderr, "readed valur %i\n", tmp);
 	return true;
 }
 
@@ -73,6 +72,28 @@ Unsigned::Unsigned(unsigned int& i, unsigned int a, unsigned int b) {
 }
 
 Unsigned::~Unsigned() {}
+
+Float::Float(float& i, float a, float b) {
+	value = &i;
+	min = a; max = b;
+}
+
+Float::~Float() {}
+
+bool Float::deserialize(const char* src, size_t maxlen) {
+	float tmp = 0;
+	int stat = sscanf(src, "%f", &tmp);
+	if (stat <= 0) return false;
+	*value = tmp;
+	if (*value < min) *value = min;
+	else if (*value > max) *value = max;
+	return true;
+}
+
+size_t Float::serialize  (char* dst, size_t maxlen) {
+	int i = snprintf(dst, maxlen, "%f", *value);
+	return i > 0 ? size_t(i) : 0;
+}
 
 bool Unsigned::deserialize(const char* src, size_t maxlen) {
 	unsigned int tmp = 0;
@@ -118,21 +139,6 @@ Register::~Register() {
 	if (ptr) delete ptr;
 	ptr = nullptr;
 }
-
-// TODO : move theese implementations in separate file!
-
-void   Flag::showGUI(const char* name, float x, float y, float w, float h) {
-	
-}
-
-void   Unsigned::showGUI(const char* name, float x, float y, float w, float h) {
-
-}
-
-void   Integer::showGUI(const char* name, float x, float y, float w, float h) {
-
-}
-
 // keep all settings in one list
 // TODO: change on hashmap somewhat later
 

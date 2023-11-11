@@ -39,7 +39,7 @@ class UninitHook {
 };
 
 extern bool verbose;
-extern ::conf::Manager config;
+extern ::conf::Manager settings;
 
 void stop();
 

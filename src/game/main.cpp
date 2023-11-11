@@ -25,6 +25,8 @@
 #include "game.hpp"
 #include "enet.h"
 
+#include "scrtotal.hpp"
+
 int addformat(std::string& buff, const char* fmt, ...);
 
 std::string getConfigDir(const char* appname);
@@ -34,14 +36,6 @@ std::string getDataDir(const char* appname);
 static const char* const names[] = {
 	"tick", "disk_io", "gc", "draw", // theese four are MANDATORY for main thread! (Used by the engine!)
 	NULL
-};
-
-namespace screen {
-	extern Base* Debug;
-	extern Base* Menu;
-	extern Base* Server;
-	extern Base* Client;
-	extern Base* Local;
 };
 
 screen::Manager screens;
