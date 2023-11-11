@@ -29,6 +29,7 @@
 #include "utils/random.h"
 #include "raylib/raywrap.h"
 #include "config/config.h"
+#include "locale/locale.hpp"
 #include "screen.h"
 
 namespace engine {
