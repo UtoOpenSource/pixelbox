@@ -24,11 +24,15 @@ namespace screen {
 
 Base::~Base() {}
 void Base::update(float dt) {}
-void Base::drawback() {}
 bool Base::drawgui() {return false;}
 bool Base::collision(Vector2 vec) {return false;}
 void Base::shown() {}
 void Base::hidden() {}
+
+Background::~Background() {}
+void Background::draw() {}
+void Background::shown() {}
+void Background::hidden() {}
 
 // Gui Cache
 GuiCache::GuiCache() {
@@ -71,6 +75,7 @@ Manager::~Manager() {
 	}
 	if (curr) curr->hidden();
 	if (debug) debug->hidden();
+	if (bgobj) bgobj->hidden();
 }
 
 void Manager::release() {
@@ -81,9 +86,18 @@ void Manager::release() {
 		delete cache;
 		cache = nullptr;
 	}
+	if (curr) curr->hidden();
+	if (debug) debug->hidden();
+	if (bgobj) bgobj->hidden();
 }
 
 static Rectangle back_rec = Rectangle{5, 5, 64, 25};
+
+void Manager::setBackground(Background* b) {
+	if (bgobj) bgobj->hidden();
+	bgobj = b;
+	if (bgobj) bgobj->shown();
+}
 
 void Manager::update(double dt) {
 	if (next) { // oh no
@@ -117,6 +131,12 @@ void Manager::update(double dt) {
 	if (debug) { 
 		if (stat == 2) GuiUnlock();
 		debug->update(dt);
+		GuiLock();
+	}
+	if (bgobj) {
+		if (stat == 0) GuiUnlock();
+		debug->update(dt);
+		GuiLock();
 	}
 	GuiUnlock();
 }
@@ -129,8 +149,6 @@ void Manager::refreshGui() {
 
 void Manager::draw() {
 	if (!cache) cache = new GuiCache();
-	if (debug) debug->drawback();
-	if (curr) curr->drawback();
 
 	double t = ::engine::getTime();
 
@@ -156,23 +174,35 @@ void Manager::draw() {
 		if (curr) {
 			if (stat == 1) GuiUnlock();
 			rep |= curr->drawgui();
+			GuiLock();
 		}
-		GuiUnlock();
 	
 		if (curr && curr->prev) {
+			GuiUnlock();
 			if (GuiButton(Rectangle{5, 5, 64, 25}, "< Back")) {
 				this->setPrev(nullptr);
 			}
 			if (CheckCollisionPointRec(GetMousePosition(), back_rec)) {
 				rep |= 1;
+				
 			}
+			GuiLock();
 		}
-
 		cache->end();
 
-		double t = ::engine::getTime();
+		// bg is always drawn, no cache is used
+		if (bgobj) {
+			if (stat == 0) GuiUnlock();
+			debug->drawgui();
+			GuiLock();
+		}
+		GuiUnlock();
 
-		if (rep) refreshGui();
+		double t = ::engine::getTime();
+		if (rep) {
+			cache->oldtime = t;
+		}
+
 	}
 
 	::DrawText(TextFormat("time : %f", t), 0, 0, 20, RED);

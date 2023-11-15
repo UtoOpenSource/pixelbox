@@ -22,6 +22,7 @@
 #include "game.hpp"
 
 #include "scrtotal.hpp"
+#include "raylib/raylay.h"
 
 static class : public screen::Windowed {
 	void shown() {
@@ -36,28 +37,29 @@ static class : public screen::Windowed {
 
 	bool drawgui() {
 		GuiWindow(&win, [this](Rectangle rec) {
-			Rectangle a = {rec.x, rec.y+5, rec.width, rec.height/5.0f-25};
-			int h = a.height + 5;
+			rl::Layout l;
+			Rectangle a = {rec.x, rec.y+5, rec.width, rec.height-5};
+			l.init(a, 2, true);
 
-			if (GuiButton(a, "Open World")) {
+			float h = l.itemLen(3);
+
+			if (GuiButton(l.next(-1, h), "Open World")) {
 				this->manager->setNext(screen::WorldList);
 			};
-			a.y += h;
 			
-			if (GuiButton(a, "Connect Server")) {
+			if (GuiButton(l.next(-1, h), "Connect Server")) {
 				this->manager->setNext(screen::ServerList);
 			};
-			a.y += h;
+			l.newline(1);
 
-			if (GuiButton(a, "Settings")) {
+			if (GuiButton(l.next(-1, h), "Settings")) {
 				this->manager->setNext(screen::Settings);
 			};
-			a.y += h;
+			l.newline(1);
 
-			if (GuiButton(a, "Exit Program")) {
+			if (GuiButton(l.next(-1, h), "Exit Program")) {
 				engine::stop();
 			};
-			a.y += h;
 			
 		});	
 		return false;

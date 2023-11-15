@@ -27,6 +27,7 @@ namespace screen {
 
 	class Manager;
 
+	/* Screen Foreground */
 	class Base {
 		public:
 		class Base* prev = nullptr;
@@ -34,10 +35,21 @@ namespace screen {
 		public:
 		Base() = default;
 		virtual ~Base() = 0;
-		virtual void update(float dt); // both gui and bg
-		virtual void drawback();
+		virtual void update(float dt); // update GUI or window
 		virtual bool drawgui();
 		virtual bool collision(Vector2 bounds);
+		virtual void shown();
+		virtual void hidden();
+	};
+
+	/* Background */
+	class Background {
+		public:
+		Manager* manager = nullptr;
+		public:
+		virtual void draw();
+		Background() = default;
+		virtual ~Background() = 0;
 		virtual void shown();
 		virtual void hidden();
 	};
@@ -58,6 +70,7 @@ namespace screen {
 		private :
 		Base* curr = nullptr, *next = nullptr;
 		Base* debug = nullptr;
+		Background* bgobj = nullptr;
 
 		GuiCache* cache = nullptr;
 		public :
@@ -72,6 +85,7 @@ namespace screen {
 		void setNext(Base* screen);
 		void setRoot(Base* screen);
 		void setPrev(Base* fallback);
+		void setBackground(Background* b);
 		public:
 		void setDebug(Base* screen);
 		Base* getDebug();
