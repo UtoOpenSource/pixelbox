@@ -27,8 +27,8 @@ INCS   += $(addprefix -I,$(DIRS))
 
 # core target
 TARGET := pixelbox
-.PHONY : $(TARGET) pixelbox.exe
-all: pixelbox
+.PHONY : $(TARGET) pixelbox.exe 
+all: $(TARGET)
 
 # build directory
 BUILD_DIR :=./build

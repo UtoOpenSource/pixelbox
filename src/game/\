@@ -120,10 +120,8 @@ namespace pb {
 	// Entities
 
 	class Entity;
-
-	// UUID or direct reference
 	struct EntityID {
-		uint8_t v[16];
+		char v[8];
 		public:
 		void set_null() {
 			for (int i = 0; i < 8; i++)
@@ -140,23 +138,15 @@ namespace pb {
 				v[i] = b.v[i];
 			return *this;
 		}
-		inline bool operator==(const EntityID& b) const {
+		bool operator==(const EntityID& b) const {
 			for (int i = 0; i < 8; i++)
 				if (v[i] != b.v[i]) return false;
 			return true;
 		}
-		inline bool operator!=(const EntityID& b) const {
+		bool operator!=(const EntityID& b) const {
 			return !(*this==b);
 		}
-		inline operator bool() const { // is non-null
-			return *this != EntityID(nullptr);
-		}
-		inline int size() const {
-			return 16;
-		}
 	};
-
-	EntityID genEntityID();
 
 	struct EntityRef {
 		bool is_ref : 1;
@@ -170,22 +160,10 @@ namespace pb {
 		}
 	};
 
-	struct EntityPos {
-		int16_t x, y;
-		public:
-		bool operator==(const EntityPos& b) const {
-			return x == b.x && y == b.y;
-		}
-		bool operator!=(const EntityPos& b) const {
-			return !(*this == b);
-		}
-	};
-
 	class Entity : public Default, Shared {
 		public:
 		EntityRef self; // self reference for proper saving :)
 		EntityRef next; // next entity in list in chunk :p
-		EntityPos pos; // client has old pos too :)
 	};
 
 	constexpr const uint8_t DEFAULT_USAGE = 20;
@@ -196,8 +174,7 @@ namespace pb {
 		ChunkFlags flags;
 		public: // data
 		ChunkData data[2];
-		bool      index; // for write
-		EntityRef elist; // entity "list"
+		bool      index;
 		public: 
 		BaseChunk(ChunkPos p) : position(p) {};
 		~BaseChunk(){}

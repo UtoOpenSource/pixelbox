@@ -1,5 +1,6 @@
 *.o
-/kisspixel
+/pixelbox
+/pixelsrv
 /saves/*
 *.js
 *.wasm
