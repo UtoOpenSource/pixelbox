@@ -20,7 +20,6 @@
 #include "engine.h"
 #include "screen.h"
 #include "game.hpp"
-#include "allocator.hpp"
 
 #include "scrtotal.hpp"
 

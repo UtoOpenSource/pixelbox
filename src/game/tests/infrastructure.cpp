@@ -18,7 +18,7 @@
  */
 
 #include "doctest.h"
-#include "allocator.hpp"
+#include "utils/allocator.hpp"
 #include <memory>
 #include <array>
 
