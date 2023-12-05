@@ -24,31 +24,4 @@
 
 namespace util {
 
-static constexpr HASH_SIZE = 128;
-
-template <typename T>
-struct Hashable {
-	// you must implement theese functions, and base your class on this
-	uint64_t  hash() const;
-	Hashable* next();
-	void      set_next(Hashable*);
-	T*
-};
-
-template <typename T> // T must be a class based on Hashable! (or similar)
-class HashTable {
-	T**  table; // array of pointers on nodes
-	char logsize;
-	public:
-	HashTable();
-	HashTable(const HashTable&) = delete;
-	HashTable& operator=(const HashTable&) = delete;
-	~HashTable();
-	public:
-	void insert(T* item);
-	void remove(T* item);
-	bool find  (T* item);
-	T*   find  (uint64_t hash);
-};
-
 };
