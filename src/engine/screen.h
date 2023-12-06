@@ -48,6 +48,7 @@ namespace screen {
 		Manager* manager = nullptr;
 		public:
 		virtual void draw();
+		virtual void update(float dt); // update GUI or window
 		Background() = default;
 		virtual ~Background() = 0;
 		virtual void shown();

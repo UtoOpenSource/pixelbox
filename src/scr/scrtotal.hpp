@@ -5,6 +5,7 @@ namespace screen {
 	extern Base* Settings;
 	extern Base* ServerList;
 	extern Base* WorldList;
+	extern Base* Tutorial;
 
 	// should not be accessed directly!
 	extern Base* Gameplay;

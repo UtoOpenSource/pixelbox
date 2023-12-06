@@ -31,6 +31,7 @@ void Base::hidden() {}
 
 Background::~Background() {}
 void Background::draw() {}
+void Background::update(float) {}
 void Background::shown() {}
 void Background::hidden() {}
 
@@ -135,7 +136,7 @@ void Manager::update(double dt) {
 	}
 	if (bgobj) {
 		if (stat == 0) GuiUnlock();
-		debug->update(dt);
+		bgobj->update(dt);
 		GuiLock();
 	}
 	GuiUnlock();
@@ -193,7 +194,7 @@ void Manager::draw() {
 		// bg is always drawn, no cache is used
 		if (bgobj) {
 			if (stat == 0) GuiUnlock();
-			debug->drawgui();
+			bgobj->draw();
 			GuiLock();
 		}
 		GuiUnlock();

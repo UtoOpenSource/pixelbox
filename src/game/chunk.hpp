@@ -19,16 +19,20 @@
 
 #pragma once
 #include <stdint.h>
+#include <stddef.h>
 #include <limits.h>
 #include "base.hpp"
 #include "pixel.hpp"
 
 namespace pb {
 
+	#define CHUNK_WIDTH 16
+	#define CHUNK_HEIGHT 16
+
 	constexpr bool sanity_check_chunk_data = 1;
-	struct alignas(2) AtomType {
+
+	struct alignas(1) AtomType {
 		uint8_t type;
-		uint8_t data;
 		public:
 		inline operator uint8_t() const {
 			return type;
@@ -45,9 +49,12 @@ namespace pb {
 		inline bool is_air() const {
 			return type == 0;
 		}
+		inline uint8_t& data() { // unsafe to access not from chunk!
+			return (&type)[CHUNK_WIDTH*CHUNK_HEIGHT];
+		}
 	};
 
-	static_assert(sizeof(AtomType) == 2, "your compiler is sick");
+	static_assert(sizeof(AtomType) == 1, "your compiler is sick");
 
 	/**
 	 * @description position of the chunk
@@ -82,11 +89,12 @@ namespace pb {
 	struct ChunkData {
 		public:
 		using position_t = int8_t;
-		static constexpr uint8_t WIDTH  = 16;
-		static constexpr uint8_t HEIGHT = 16;
+		static constexpr uint8_t WIDTH  = CHUNK_WIDTH;
+		static constexpr uint8_t HEIGHT = CHUNK_HEIGHT;
 		static constexpr uint16_t SIZE  = WIDTH*HEIGHT;
 		public:
 		AtomType atoms[WIDTH*HEIGHT];
+		uint8_t  atoms_data[WIDTH*HEIGHT]; // please access by .data() only!
 		public:
 		inline AtomType& get(uint16_t i) {
 			if (sanity_check_chunk_data && i >= SIZE)
@@ -99,17 +107,13 @@ namespace pb {
 			return atoms[x + WIDTH*y];
 		}
 	};
+	
+	static_assert(offsetof(ChunkData, atoms_data) - offsetof(ChunkData, atoms) == CHUNK_WIDTH*CHUNK_HEIGHT, "your compiler is sick x2");
 
 	static_assert(ChunkData::SIZE < UINT16_MAX);
 
 	static constexpr uint16_t DATA_SIZE_NET = endian::ton16(ChunkData::SIZE); 
 
-	static constexpr unsigned int DATA_PROTOCOL_ID = (
-		(DATA_SIZE_NET << 16) + // chunk size
-		(sizeof(AtomType)<< 12) + // pixel type size
-		(sizeof(AtomType)<< 8)  + // pixel data size
-		0xAF // unique
-	);
 
 	struct ChunkFlags {
 		bool is_ready    : 1;
@@ -158,18 +162,6 @@ namespace pb {
 
 	EntityID genEntityID();
 
-	struct EntityRef {
-		bool is_ref : 1;
-		union {
-			Entity* ref; 
-			EntityID id;
-		} pack;
-		public:
-		EntityRef() {
-			is_ref = false; pack.id.set_null();
-		}
-	};
-
 	struct EntityPos {
 		int16_t x, y;
 		public:
@@ -183,9 +175,9 @@ namespace pb {
 
 	class Entity : public Default, Shared {
 		public:
-		EntityRef self; // self reference for proper saving :)
-		EntityRef next; // next entity in list in chunk :p
+		Entity*  next; // next entity in list in chunk :p
 		EntityPos pos; // client has old pos too :)
+		EntityID self; // self reference for proper saving :)
 	};
 
 	constexpr const uint8_t DEFAULT_USAGE = 20;
@@ -197,7 +189,7 @@ namespace pb {
 		public: // data
 		ChunkData data[2];
 		bool      index; // for write
-		EntityRef elist; // entity "list"
+		Entity*   elist; // entity "list"
 		public: 
 		BaseChunk(ChunkPos p) : position(p) {};
 		~BaseChunk(){}
